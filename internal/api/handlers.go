@@ -363,6 +363,17 @@ func (h *Handler) DeleteRecurringExpense(w http.ResponseWriter, r *http.Request)
 // Static and UI Handlers
 // ------------------------------------------------------------
 
+func (h *Handler) ServeYearView(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, ErrorResponse{Error: "Method not allowed"})
+		return
+	}
+	w.Header().Set("Content-Type", "text/html")
+	if err := web.ServeTemplate(w, "year.html"); err != nil {
+		http.Error(w, "Failed to serve template", http.StatusInternalServerError)
+	}
+}
+
 func (h *Handler) ServeTableView(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, ErrorResponse{Error: "Method not allowed"})

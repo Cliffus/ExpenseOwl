@@ -45,6 +45,7 @@ func runServer(port int) {
 		}
 	})
 	http.HandleFunc("/table", handler.ServeTableView)
+	http.HandleFunc("/year", handler.ServeYearView)
 	http.HandleFunc("/settings", handler.ServeSettingsPage)
 
 	// Static File Handlers

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/fa.min.css">
+    <meta name="theme-color" content="#1a1a1a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/pwa/icon-192.png">
+    <link rel="stylesheet" href="/style.css">
+    <script>
+        (function () {
+            const theme = localStorage.getItem('theme') || 'system';
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <title>ExpenseOwl Yearly Summary</title>
+    <script src="/chart.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="nav-bar">
+                <a href="/">
+                    <img src="/pwa/icon-192.png" alt="ExpenseOwl Logo" height="85"
+                        style="vertical-align: middle; margin-right: 20px;">
+                </a>
+                <a href="/" class="view-button" data-tooltip="Dashboard">
+                    <i class="fa-solid fa-chart-pie"></i>
+                </a>
+                <a href="/table" class="view-button" data-tooltip="Table View">
+                    <i class="fa-solid fa-table"></i>
+                </a>
+                <a href="/year" class="view-button active" data-tooltip="Yearly Summary">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </a>
+                <a href="/settings" class="view-button" data-tooltip="Settings">
+                    <i class="fa-solid fa-gear"></i>
+                </a>
+            </div>
+        </header>
+
+        <!-- Year navigation -->
+        <div class="month-navigation">
+            <button id="prevYear" class="nav-button"><i class="fa-solid fa-arrow-left"></i></button>
+            <div class="current-month" id="currentYear"></div>
+            <button id="nextYear" class="nav-button"><i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+
+        <!-- No data message -->
+        <div id="noDataMessage" class="no-data" style="display:none;">No expenses recorded this year.</div>
+
+        <!-- Yearly cashflow summary cards -->
+        <div id="cashflow-section" class="cashflow-container" style="display:none;">
+            <div class="cashflow-item income">
+                <div class="cashflow-label">Income</div>
+                <div class="cashflow-value" id="cashflow-income"></div>
+            </div>
+            <div class="cashflow-item expenses">
+                <div class="cashflow-label">Expenses</div>
+                <div class="cashflow-value" id="cashflow-expenses"></div>
+            </div>
+            <div class="cashflow-item balance">
+                <div class="cashflow-label">Balance</div>
+                <div class="cashflow-value" id="cashflow-balance"></div>
+            </div>
+        </div>
+
+        <!-- Monthly cashflow bar chart -->
+        <div id="monthly-bar-section" class="chart-section-card" style="display:none;">
+            <p class="section-title">Monthly Cashflow</p>
+            <div class="year-bar-wrap">
+                <canvas id="monthlyBarChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Category drill-down panel (shared across category charts) -->
+        <div id="drilldown-overlay" class="drilldown-overlay">
+            <div id="drilldown-panel" class="drilldown-panel">
+                <div class="drilldown-header">
+                    <span class="drilldown-title" id="drilldown-title">Category</span>
+                    <button class="drilldown-close" id="drilldown-close" title="Close">&#x2715;</button>
+                </div>
+                <div class="drilldown-body">
+                    <div class="drilldown-chart-wrap">
+                        <canvas id="drilldownChart"></canvas>
+                    </div>
+                    <div class="drilldown-list" id="drilldown-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category + Tag breakdown doughnuts -->
+        <div id="breakdown-section" class="year-breakdowns-grid" style="display:none; margin-bottom: 1.5rem;">
+            <div class="year-doughnut-card">
+                <p class="section-title">Expenses by Category</p>
+                <div class="year-doughnut-wrap">
+                    <canvas id="yearCatChart"></canvas>
+                </div>
+                <div class="year-doughnut-legend" id="yearCatLegend"></div>
+            </div>
+            <div class="year-doughnut-card">
+                <p class="section-title">Expenses by Tag</p>
+                <div class="year-doughnut-wrap">
+                    <canvas id="yearTagChart"></canvas>
+                </div>
+                <div class="year-doughnut-legend" id="yearTagLegend"></div>
+            </div>
+        </div>
+
+        <!-- Top tags horizontal bar -->
+        <div id="top-tags-section" class="chart-section-card" style="display:none;">
+            <p class="section-title">Top Tags by Annual Spend</p>
+            <div class="year-topbar-wrap">
+                <canvas id="topTagsChart"></canvas>
+            </div>
+        </div>
+
+    </div><!-- end .container -->
+
+    <script src="/functions.js"></script>
+    <script>
+        let currentCurrency = 'usd';
+        let startDate = 1;
+        let currentYear = new Date().getFullYear();
+        let allExpenses = [];
+        let categoryColors = {};
+        let tagColors = {};
+        let drilldownChart = null;
+        let monthlyBarChart = null;
+        let yearCatChart = null;
+        let yearTagChart = null;
+        let topTagsChart = null;
+        let openDrilldownCategory = null;
+
+        Chart.defaults.color = '#b3b3b3';
+        Chart.defaults.borderColor = '#606060';
+        Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+        function getYearExpenses(year) {
+            return allExpenses.filter(e => {
+                const d = new Date(e.date);
+                return d.getFullYear() === year;
+            });
+        }
+
+        function assignCategoryColors(categories) {
+            categories.forEach((cat, idx) => {
+                if (!categoryColors[cat]) categoryColors[cat] = colorPalette[idx % colorPalette.length];
+            });
+        }
+
+        function assignTagColors(tags) {
+            tags.forEach((tag, idx) => {
+                if (!tagColors[tag]) tagColors[tag] = colorPalette[(idx + 5) % colorPalette.length];
+            });
+        }
+
+        // ── Yearly cashflow summary ────────────────────────────────
+        function updateYearlyCashflow(expenses) {
+            const income = expenses.filter(e => e.amount > 0).reduce((s, e) => s + e.amount, 0);
+            const expTotal = expenses.filter(e => e.amount < 0).reduce((s, e) => s + Math.abs(e.amount), 0);
+            const balance = income - expTotal;
+
+            document.getElementById('cashflow-income').textContent = formatCurrency(income);
+            document.getElementById('cashflow-expenses').textContent = formatCurrency(expTotal);
+            document.getElementById('cashflow-balance').textContent = formatCurrency(balance);
+            const balEl = document.getElementById('cashflow-balance');
+            balEl.classList.toggle('positive', balance >= 0);
+            balEl.classList.toggle('negative', balance < 0);
+
+            const section = document.getElementById('cashflow-section');
+            section.style.display = expenses.length > 0 ? 'flex' : 'none';
+        }
+
+        // ── Monthly bar chart ──────────────────────────────────────
+        function calculateMonthlyBars(expenses, year) {
+            const now = new Date();
+            const maxMonth = (year === now.getFullYear()) ? now.getMonth() : (year > now.getFullYear() ? -1 : 11);
+            if (maxMonth === -1) return { income: [], expenses: [], balance: [] };
+
+            const months = Array.from({ length: maxMonth + 1 }, (_, i) => i);
+            const income = months.map(m =>
+                expenses.filter(e => e.amount > 0 && new Date(e.date).getMonth() === m)
+                    .reduce((s, e) => s + e.amount, 0)
+            );
+            const expenseArr = months.map(m =>
+                expenses.filter(e => e.amount < 0 && new Date(e.date).getMonth() === m)
+                    .reduce((s, e) => s + Math.abs(e.amount), 0)
+            );
+            const balanceArr = months.map((m, i) => income[i] - expenseArr[i]);
+            return { income, expenses: expenseArr, balance: balanceArr };
+        }
+
+        const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        function createMonthlyBarChart(data) {
+            if (monthlyBarChart) { monthlyBarChart.destroy(); monthlyBarChart = null; }
+            if (data.income.length === 0) return;
+
+            const computedStyle = getComputedStyle(document.body);
+            // Derive balance color adapting to theme: --chart-balance-line (Navy in light, Gold in dark)
+            const balanceColor = computedStyle.getPropertyValue('--chart-balance-line').trim() || '#FFD700';
+
+            monthlyBarChart = new Chart('monthlyBarChart', {
+                type: 'bar',
+                data: {
+                    labels: MONTH_LABELS.slice(0, data.income.length),
+                    datasets: [
+                        {
+                            type: 'line',
+                            label: 'Balance',
+                            data: data.balance,
+                            borderColor: balanceColor,
+                            backgroundColor: balanceColor,
+                            borderWidth: 2,
+                            pointBackgroundColor: balanceColor,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: false,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Income',
+                            data: data.income,
+                            backgroundColor: 'rgba(16, 185, 129, 0.7)', // Emerald Green
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Expenses',
+                            data: data.expenses,
+                            backgroundColor: 'rgba(244, 63, 94, 0.7)', // Coral Red
+                            borderColor: 'rgba(244, 63, 94, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 14, padding: 12 } },
+                        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}` } }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            beginAtZero: true,
+                            ticks: { callback: v => formatCurrency(v) },
+                            grid: { drawOnChartArea: true, color: 'rgba(128, 128, 128, 0.15)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            beginAtZero: true,
+                            ticks: { callback: v => formatCurrency(v) },
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ── Generic doughnut builder ───────────────────────────────
+        function buildDoughnut(canvasId, labels, data, colors) {
+            return new Chart(canvasId, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{ data, backgroundColor: colors, borderColor: '#1a1a1a', borderWidth: 1 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => {
+                                    const pct = ((ctx.raw / ctx.dataset.data.reduce((s, v) => s + v, 0)) * 100).toFixed(1);
+                                    return `${ctx.label}: ${formatCurrency(ctx.raw)} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ── Legend builder ─────────────────────────────────────────
+        function buildLegend(container, entries, colors, onClickCb) {
+            container.innerHTML = '';
+            const total = entries.reduce((s, e) => s + e.value, 0);
+            entries.forEach(({ label, value }) => {
+                const item = document.createElement('div');
+                item.className = 'category-legend-item';
+                if (onClickCb) item.style.cursor = 'pointer';
+                const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                item.innerHTML = `
+                    <div class="color-box" style="background-color:${colors[label]}"></div>
+                    <div class="category-legend-text">
+                        <span>${escapeHTML(label)} (${pct}%)</span>
+                        <span class="amount">${formatCurrency(value)}${onClickCb ? ' <i class="fa-solid fa-magnifying-glass" style="font-size:0.7rem;opacity:0.5;"></i>' : ''}</span>
+                    </div>`;
+                if (onClickCb) item.addEventListener('click', () => onClickCb(label));
+                container.appendChild(item);
+            });
+        }
+
+        // ── Category drill-down (re-used pattern from index.html) ──
+        function openCategoryDrillDown(category, expenses) {
+            openDrilldownCategory = category;
+            const catExpenses = expenses.filter(e => e.category === category && e.amount < 0);
+            const overlay = document.getElementById('drilldown-overlay');
+            document.getElementById('drilldown-title').textContent = category + ' — Tag Breakdown';
+            overlay.classList.add('open');
+
+            // Build tag totals for this category
+            const tagTotals = {};
+            catExpenses.forEach(e => {
+                if (e.tags && e.tags.length > 0) {
+                    e.tags.forEach(t => {
+                        tagTotals[t] = (tagTotals[t] || 0) + Math.abs(e.amount);
+                    });
+                }
+            });
+            const tagEntries = Object.entries(tagTotals).sort((a, b) => b[1] - a[1]);
+
+            // Bar Chart
+            if (drilldownChart) { drilldownChart.destroy(); drilldownChart = null; }
+            if (tagEntries.length > 0) {
+                assignTagColors(tagEntries.map(([t]) => t));
+                drilldownChart = new Chart('drilldownChart', {
+                    type: 'bar',
+                    data: {
+                        labels: tagEntries.map(([t]) => t),
+                        datasets: [{
+                            data: tagEntries.map(([, v]) => v),
+                            backgroundColor: tagEntries.map(([t]) => tagColors[t] + 'CC'),
+                            borderColor: tagEntries.map(([t]) => tagColors[t]),
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: ctx => `${ctx.label}: ${formatCurrency(ctx.raw)}` } }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } }
+                        }
+                    }
+                });
+            }
+
+            // Expense list
+            const listEl = document.getElementById('drilldown-list');
+            if (catExpenses.length === 0) {
+                listEl.innerHTML = '<div class="drilldown-no-tags">No expenses in this category.</div>';
+                return;
+            }
+            const sorted = [...catExpenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+            let totalAmount = 0;
+            let rows = sorted.map(e => {
+                totalAmount += Math.abs(e.amount);
+                return `<tr>
+                    <td>${escapeHTML(e.name)}</td>
+                    <td style="font-family:monospace;white-space:nowrap; text-align: right;">${formatCurrency(Math.abs(e.amount))}</td>
+                </tr>`;
+            }).join('');
+            listEl.innerHTML = `<table>
+                <thead><tr><th>Name</th><th style="text-align: right;">Amount</th></tr></thead>
+                <tbody>${rows}</tbody>
+                <tfoot style="border-top: 1px solid var(--border);">
+                    <tr>
+                        <td style="font-weight:bold;">Total:</td>
+                        <td style="font-family:monospace; font-weight:bold; white-space:nowrap; text-align: right;">${formatCurrency(totalAmount)}</td>
+                    </tr>
+                </tfoot>
+            </table>`;
+        }
+
+        function setupCategoryDrillDownOverlay() {
+            const overlay = document.getElementById('drilldown-overlay');
+            if (overlay) {
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) closeCategoryDrillDown();
+                });
+            }
+
+            document.getElementById('drilldown-close').addEventListener('click', closeCategoryDrillDown);
+        }
+
+        function closeCategoryDrillDown() {
+            openDrilldownCategory = null;
+            document.getElementById('drilldown-overlay').classList.remove('open');
+            if (drilldownChart) { drilldownChart.destroy(); drilldownChart = null; }
+        }
+
+        // ── Top tags horizontal bar ────────────────────────────────
+        function createTopTagsChart(tagEntries) {
+            if (topTagsChart) { topTagsChart.destroy(); topTagsChart = null; }
+            const top = tagEntries.slice(0, 12); // cap at 12 for readability
+            topTagsChart = new Chart('topTagsChart', {
+                type: 'bar',
+                data: {
+                    labels: top.map(([t]) => t),
+                    datasets: [{
+                        label: 'Annual Spend',
+                        data: top.map(([, v]) => v),
+                        backgroundColor: top.map(([t]) => tagColors[t]),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => formatCurrency(ctx.raw) } }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } }
+                    }
+                }
+            });
+        }
+
+        // ── Master yearly update ───────────────────────────────────
+        function updateYear() {
+            document.getElementById('currentYear').textContent = currentYear;
+            closeCategoryDrillDown();
+
+            let yearExp = getYearExpenses(currentYear);
+
+            // Limit to YTD for current year
+            const now = new Date();
+            if (currentYear === now.getFullYear()) {
+                const maxMonth = now.getMonth();
+                yearExp = yearExp.filter(e => new Date(e.date).getMonth() <= maxMonth);
+            } else if (currentYear > now.getFullYear()) {
+                yearExp = [];
+            }
+
+            const hasData = yearExp.some(e => e.amount < 0 || e.amount > 0);
+
+            document.getElementById('noDataMessage').style.display = hasData ? 'none' : 'block';
+            document.getElementById('monthly-bar-section').style.display = hasData ? 'block' : 'none';
+            document.getElementById('breakdown-section').style.display = hasData ? 'flex' : 'none';
+            document.getElementById('top-tags-section').style.display = hasData ? 'block' : 'none';
+
+            updateYearlyCashflow(yearExp);
+
+            if (!hasData) return;
+
+            // Monthly bar chart
+            const barData = calculateMonthlyBars(yearExp, currentYear);
+            createMonthlyBarChart(barData);
+
+            // Category doughnut
+            const catTotals = {};
+            yearExp.filter(e => e.amount < 0).forEach(e => {
+                catTotals[e.category] = (catTotals[e.category] || 0) + Math.abs(e.amount);
+            });
+            const catEntries = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+            assignCategoryColors(catEntries.map(([c]) => c));
+
+            if (yearCatChart) { yearCatChart.destroy(); yearCatChart = null; }
+            yearCatChart = buildDoughnut('yearCatChart',
+                catEntries.map(([c]) => c),
+                catEntries.map(([, v]) => v),
+                catEntries.map(([c]) => categoryColors[c])
+            );
+            buildLegend(
+                document.getElementById('yearCatLegend'),
+                catEntries.map(([label, value]) => ({ label, value })),
+                categoryColors,
+                (cat) => {
+                    if (openDrilldownCategory === cat) { closeCategoryDrillDown(); }
+                    else { openCategoryDrillDown(cat, yearExp); }
+                }
+            );
+
+            // Tag doughnut
+            const tagTotals = {};
+            yearExp.filter(e => e.amount < 0).forEach(e => {
+                (e.tags || []).forEach(t => { tagTotals[t] = (tagTotals[t] || 0) + Math.abs(e.amount); });
+            });
+            const tagEntries = Object.entries(tagTotals).sort((a, b) => b[1] - a[1]);
+
+            if (yearTagChart) { yearTagChart.destroy(); yearTagChart = null; }
+            if (tagEntries.length > 0) {
+                assignTagColors(tagEntries.map(([t]) => t));
+                yearTagChart = buildDoughnut('yearTagChart',
+                    tagEntries.map(([t]) => t),
+                    tagEntries.map(([, v]) => v),
+                    tagEntries.map(([t]) => tagColors[t])
+                );
+                buildLegend(
+                    document.getElementById('yearTagLegend'),
+                    tagEntries.map(([label, value]) => ({ label, value })),
+                    tagColors,
+                    null
+                );
+                createTopTagsChart(tagEntries);
+                document.getElementById('top-tags-section').style.display = 'block';
+            } else {
+                document.getElementById('yearTagChart').getContext('2d').clearRect(0, 0, 1, 1);
+                document.getElementById('yearTagLegend').innerHTML = '<div class="no-data">No tagged expenses this year.</div>';
+                document.getElementById('top-tags-section').style.display = 'none';
+            }
+        }
+
+        async function initialize() {
+            try {
+                const configRes = await fetch('/config');
+                if (!configRes.ok) throw new Error('Failed to fetch config');
+                const config = await configRes.json();
+                currentCurrency = config.currency;
+                startDate = config.startDate;
+
+                const expRes = await fetch('/expenses');
+                if (!expRes.ok) throw new Error('Failed to fetch expenses');
+                const data = await expRes.json();
+                allExpenses = Array.isArray(data) ? data : (data && Array.isArray(data.expenses) ? data.expenses : []);
+
+                // Pre-assign colors for all categories + tags seen across history
+                const allCats = [...new Set(allExpenses.map(e => e.category))];
+                const allTagsArr = [...new Set(allExpenses.flatMap(e => e.tags || []))];
+                assignCategoryColors(allCats);
+                assignTagColors(allTagsArr);
+
+                updateYear();
+                setupCategoryDrillDownOverlay();
+            } catch (err) {
+                console.error('Failed to initialize yearly view:', err);
+            }
+        }
+
+        document.getElementById('prevYear').addEventListener('click', () => {
+            currentYear--;
+            updateYear();
+        });
+        document.getElementById('nextYear').addEventListener('click', () => {
+            currentYear++;
+            updateYear();
+        });
+
+        document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+
+</html>

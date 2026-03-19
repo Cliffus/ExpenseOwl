@@ -6,6 +6,7 @@
     --text-secondary: #b3b3b3;
     --border: #1a365d;
     --accent: #69afde;
+    --chart-balance-line: #FFD700;
 }
 
 /* Light theme override */
@@ -15,6 +16,7 @@ html[data-theme='light'] {
     --text-primary: #2e2e2e;
     --text-secondary: #3e3e3e;
     --border: #e6ddd4;
+    --chart-balance-line: #1e3a8a;
 }
 
 /* Dark theme override */
@@ -24,6 +26,7 @@ html[data-theme='dark'] {
     --text-primary: #f4f4f4;
     --text-secondary: #b3b3b3;
     --border: #1a365d;
+    --chart-balance-line: #FFD700;
 }
 
 /* System preference for light mode (when no theme is set) */
@@ -34,6 +37,7 @@ html[data-theme='dark'] {
         --text-primary: #2e2e2e;
         --text-secondary: #3e3e3e;
         --border: #e6ddd4;
+        --chart-balance-line: #1e3a8a;
     }
 }
 
@@ -1060,6 +1064,45 @@ header {
 
 .drilldown-list tr:last-child td {
     border-bottom: none;
+}
+
+/* ── Year-view specific ──────────────────────────────────── */
+.year-bar-wrap {
+    height: 280px;
+    position: relative;
+}
+
+.year-breakdowns-grid {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.year-doughnut-card {
+    flex: 1;
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.year-doughnut-wrap {
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.year-doughnut-legend {
+    margin-top: 0.5rem;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.year-topbar-wrap {
+    height: 300px;
+    position: relative;
+}
+
 /* ── Responsive overrides for new sections ───────────────── */
 @media (max-width: 768px) {
     .section-title {
@@ -1082,6 +1125,15 @@ header {
 
     .drilldown-list {
         max-height: 180px;
+    }
+
+    .year-breakdowns-grid {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .year-topbar-wrap {
+        height: 240px;
     }
 }
 
