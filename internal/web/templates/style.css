@@ -65,7 +65,8 @@ header {
     margin-bottom: 1rem;
 }
 
-.nav-button, .edit-button {
+.nav-button,
+.edit-button {
     background-color: var(--bg-primary);
     border: 1px solid var(--border);
     color: var(--text-primary);
@@ -77,12 +78,17 @@ header {
 }
 
 @media (prefers-color-scheme: light) {
-    #prevMonth, #nextMonth, #toggleExpenseFormBtn {
+
+    #prevMonth,
+    #nextMonth,
+    #toggleExpenseFormBtn {
         background-color: var(--bg-secondary);
     }
 }
 
-.nav-button, .view-button, .edit-button {
+.nav-button,
+.view-button,
+.edit-button {
     border-radius: 9999px;
     padding: 0.5rem 1.25rem;
     font-weight: 500;
@@ -90,11 +96,14 @@ header {
     border: 1px solid var(--border);
 }
 
-.nav-button:hover, .edit-button:hover {
+.nav-button:hover,
+.edit-button:hover {
     background-color: var(--accent);
 }
 
-.nav-button:hover, .view-button:hover, .edit-button:hover {
+.nav-button:hover,
+.view-button:hover,
+.edit-button:hover {
     background-color: var(--accent);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -111,7 +120,7 @@ header {
     text-align: center;
 }
 
-.chart-container {
+.category-chart-container {
     display: flex;
     gap: 1rem;
     margin-bottom: 1rem;
@@ -119,22 +128,23 @@ header {
     border-radius: 8px;
     padding: 0.5rem;
     min-height: 450px;
-    align-items: center;
+    align-items: start;
 }
 
-.chart-box {
+.category-chart-box {
     flex: 1;
     height: 380px;
     display: flex;
     align-items: center;
+    padding: 1rem;
 }
 
-.chart-box canvas {
+.category-chart-box canvas {
     width: 100%;
     max-height: 380px;
 }
 
-.legend-item {
+.category-legend-item {
     display: flex;
     align-items: center;
     margin-bottom: 1rem;
@@ -142,12 +152,12 @@ header {
     user-select: none;
 }
 
-.legend-item.disabled .color-box {
+.category-legend-item.disabled .color-box {
     background-color: #808080 !important;
     position: relative;
 }
 
-.legend-item.disabled .color-box::after {
+.category-legend-item.disabled .color-box::after {
     content: '×';
     position: absolute;
     top: 50%;
@@ -157,8 +167,20 @@ header {
     font-weight: bold;
 }
 
-.legend-item.disabled .legend-text {
+.category-legend-item.disabled .legend-text {
     opacity: 0.5;
+}
+
+.category-trend-chart-box {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+}
+
+.category-trend-chart-box canvas {
+    width: 100%;
+    max-height: 800px;
 }
 
 .color-box {
@@ -169,7 +191,7 @@ header {
     transition: background-color 0.3s ease;
 }
 
-.legend-box {
+.category-legend-box {
     flex: 1;
     padding: 0.5rem 2.5rem 0.5rem 0.5rem;
     display: flex;
@@ -177,7 +199,7 @@ header {
     justify-content: center;
 }
 
-.legend-text {
+.category-legend-text {
     display: flex;
     justify-content: space-between;
     flex: 1;
@@ -283,7 +305,8 @@ header {
     color: var(--text-secondary);
 }
 
-.delete-button, .edit-button {
+.delete-button,
+.edit-button {
     background: none;
     border: none;
     color: var(--text-secondary);
@@ -293,7 +316,8 @@ header {
     transition: all 0.2s;
 }
 
-.delete-button, .edit-button {
+.delete-button,
+.edit-button {
     border-radius: 9999px;
     padding: 6px 10px;
 }
@@ -382,23 +406,28 @@ header {
 .category-item {
     cursor: grab;
 }
+
 .category-item.dragging {
     opacity: 0.5;
     cursor: grabbing;
 }
+
 .category-item.drag-over {
     border: 1px dashed var(--accent);
     background-color: rgba(105, 175, 222, 0.1);
 }
+
 .category-item .drag-handle {
     cursor: grab;
     margin-right: 6px;
     color: var(--text-secondary);
 }
+
 .category-handle-area {
     display: flex;
     align-items: center;
 }
+
 .placeholder {
     border: 2px dashed var(--accent);
     background-color: rgba(105, 175, 222, 0.1);
@@ -446,7 +475,8 @@ header {
     gap: 1rem;
 }
 
-.export-buttons a, .import-option label {
+.export-buttons a,
+.import-option label {
     text-decoration: none;
 }
 
@@ -547,9 +577,11 @@ header {
     display: flex;
     gap: 1rem;
 }
+
 .form-container.half-width {
     flex: 1;
 }
+
 .form-help-text {
     font-size: 0.85rem;
     color: var(--text-secondary);
@@ -562,27 +594,34 @@ header {
     font-size: 0.9rem;
     color: var(--text-secondary);
 }
+
 .info-field a {
     color: var(--text-primary);
     text-decoration: underline;
     cursor: pointer
 }
+
 .info-field a:hover {
     transform: scale(1.1);
 }
+
 .info-field .separator {
     color: var(--border);
     margin: 0 0.5rem;
 }
 
-.currency-selector, .start-date-manager, .theme-selector {
+.currency-selector,
+.start-date-manager,
+.theme-selector {
     display: flex;
     align-items: center;
     gap: 1rem;
     margin: 1rem 0;
 }
 
-.start-date-manager input, .currency-selector select, .theme-selector select {
+.start-date-manager input,
+.currency-selector select,
+.theme-selector select {
     flex: 1;
     padding: 0.5rem;
     border: 1px solid var(--border);
@@ -602,11 +641,13 @@ header {
     background-color: var(--bg-primary);
     cursor: text;
 }
+
 .selected-tags {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
 }
+
 .tags-input-container input {
     flex: 1;
     border: none;
@@ -615,6 +656,7 @@ header {
     color: var(--text-primary);
     min-width: 100px;
 }
+
 .tag-pill {
     background-color: var(--accent);
     color: #fff;
@@ -625,6 +667,7 @@ header {
     gap: 0.25rem;
     font-size: 0.875rem;
 }
+
 .remove-tag {
     cursor: pointer;
     margin-left: 0.25rem;
@@ -648,38 +691,52 @@ header {
     padding: 0.5rem;
     cursor: pointer;
 }
+
 .tags-dropdown div:hover {
     background-color: var(--accent);
 }
+
 .tags-dropdown .new-tag {
     color: #2EAB7D;
     font-style: italic;
 }
 
 @media (max-width: 768px) {
-    .chart-container {
+    .category-chart-container {
         flex-direction: column;
         min-height: auto;
         padding: 1rem;
     }
 
-    .chart-box {
+    .category-chart-box {
         display: flex;
         justify-content: center;
         align-items: center;
         margin: auto;
     }
 
-    .chart-box canvas {
+    .category-chart-box canvas {
         max-height: 300px;
     }
 
-    .legend-box {
+    .category-trend-chart-box {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: auto;
+    }
+
+    .category-trend-chart-box canvas {
+        width: 100%;
+        max-height: 600px;
+    }
+
+    .category-legend-box {
         width: 100%;
         padding: 0.5rem;
     }
 
-    .legend-item {
+    .category-legend-item {
         margin-bottom: 0.5rem;
     }
 
@@ -691,12 +748,12 @@ header {
     .nav-bar {
         margin-bottom: 0.5rem;
     }
-    
+
     .nav-button {
         padding: 0.25rem 0.75rem;
         font-size: 1rem;
     }
-    
+
     .current-month {
         font-size: 1rem;
         text-align: center;
@@ -727,11 +784,11 @@ header {
         margin-bottom: 0.5rem;
         gap: 0.5rem;
     }
-    
+
     .export-buttons {
         flex-direction: column;
     }
-    
+
     .export-buttons .nav-button {
         text-align: center;
     }
@@ -740,11 +797,11 @@ header {
         flex-direction: row;
         justify-content: space-around;
     }
-    
+
     .cashflow-item {
         padding: 0.5rem;
     }
-    
+
     .cashflow-value {
         font-size: 1rem;
     }
@@ -872,4 +929,164 @@ header {
 
 .table-controls label:hover {
     background-color: var(--accent);
+}
+
+/* ── New chart section cards ─────────────────────────────── */
+.chart-section-card {
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0 0 0.75rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ── Category drill-down panel ───────────────────────────── */
+.drilldown-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.drilldown-overlay.open {
+    display: flex;
+}
+
+.drilldown-panel {
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 1.5rem;
+    width: 90%;
+    max-width: 650px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-top: 4px solid var(--accent);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.drilldown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.drilldown-title {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.drilldown-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0 0.25rem;
+    line-height: 1;
+    border-radius: 4px;
+    transition: color 0.2s;
+}
+
+.drilldown-close:hover {
+    color: var(--text-primary);
+}
+
+.drilldown-body {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.drilldown-chart-wrap {
+    flex: 0 0 220px;
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.drilldown-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 220px;
+}
+
+.drilldown-list table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.drilldown-list th {
+    text-align: left;
+    color: var(--text-secondary);
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.drilldown-list td {
+    padding: 0.25rem 0.5rem;
+    vertical-align: top;
+}
+
+.drilldown-list tr:last-child td {
+    border-bottom: none;
+/* ── Responsive overrides for new sections ───────────────── */
+@media (max-width: 768px) {
+    .section-title {
+        text-align: center;
+    }
+
+    .tag-trend-wrap {
+        height: 200px;
+    }
+
+    .drilldown-body {
+        flex-direction: column;
+    }
+
+    .drilldown-chart-wrap {
+        flex: unset;
+        width: 100%;
+        height: 180px;
+    }
+
+    .drilldown-list {
+        max-height: 180px;
+    }
+}
+
+/* ── Dark mode date picker overrides ─────────────────────── */
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="month"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
 }

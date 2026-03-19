@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +12,7 @@
     <link rel="apple-touch-icon" href="/pwa/icon-192.png">
     <link rel="stylesheet" href="/style.css">
     <script>
-        (function() {
+        (function () {
             const theme = localStorage.getItem('theme') || 'system';
             if (theme === 'light') {
                 document.documentElement.setAttribute('data-theme', 'light');
@@ -30,12 +31,14 @@
     <title>ExpenseOwl Dashboard</title>
     <script src="/chart.min.js"></script>
 </head>
+
 <body>
     <div class="container">
         <header>
             <div class="nav-bar">
                 <a href="/">
-                    <img src="/pwa/icon-192.png" alt="ExpenseOwl Logo" height="85" style="vertical-align: middle; margin-right: 20px;">
+                    <img src="/pwa/icon-192.png" alt="ExpenseOwl Logo" height="85"
+                        style="vertical-align: middle; margin-right: 20px;">
                 </a>
                 <a href="/" class="view-button active" data-tooltip="Dashboard">
                     <i class="fa-solid fa-chart-pie"></i>
@@ -66,14 +69,14 @@
                         <label for="name">Name</label>
                         <input type="text" id="name" value="-" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="category">Category</label>
                         <select id="category" required>
                             <option value="">categories</option>
                         </select>
                     </div>
-    
+
                     <div class="form-group">
                         <label for="tags-input">Tags</label>
                         <div id="tags-input-container" class="tags-input-container">
@@ -82,12 +85,12 @@
                         </div>
                         <div id="tags-dropdown" class="tags-dropdown"></div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="amount">Amount</label>
                         <input type="number" id="amount" step="0.01" min="0.01" max="9000000000000000" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="date">Date</label>
                         <input type="date" id="date" required>
@@ -100,28 +103,19 @@
                             document.getElementById('date').value = formattedDate;
                         </script>
                     </div>
-                    
+
                     <div class="form-group form-group-checkbox">
                         <label for="reportGain">Report Gain</label>
                         <input type="checkbox" id="reportGain" class="styled-checkbox">
                     </div>
-    
+
                     <button type="submit" class="nav-button">Add Expense</button>
                 </form>
                 <div id="formMessage" class="form-message"></div>
             </div>
         </div>
 
-        <div class="chart-container">
-            <div id="noDataMessage" class="no-data" style="display: none; width: 100%;">No expenses recorded this month.</div>
-            <div class="chart-box">
-                <canvas id="categoryPieChart"></canvas>
-            </div>
-            <div class="legend-box" id="customLegend">
-            </div>
-        </div>
-
-        <div id="cashflow-section" class="cashflow-container">
+        <div id="cashflow-section" class="cashflow-container" style="margin-top: 1rem; margin-bottom: 1.0rem;">
             <div class="cashflow-item income">
                 <div class="cashflow-label">Income</div>
                 <div class="cashflow-value" id="cashflow-income"></div>
@@ -135,17 +129,83 @@
                 <div class="cashflow-value" id="cashflow-balance"></div>
             </div>
         </div>
-    </div>
+
+        <div class="chart-section-card" style="margin-bottom: 1.5rem;">
+            <p class="section-title" style="margin-bottom: 1rem;">Category Spending</p>
+            <div id="noDataMessage" class="no-data" style="display: none; width: 100%;">No expenses recorded this month.
+            </div>
+            <div class="category-chart-container"
+                style="background-color: transparent; padding: 0; min-height: auto; margin-bottom: 0;">
+                <div class="category-chart-box">
+                    <canvas id="categoryPieChart"></canvas>
+                </div>
+                <div class="category-legend-box" id="categoryLegend">
+                </div>
+            </div>
+        </div>
+
+        <!-- Category → Tag drill-down panel -->
+        <div id="drilldown-overlay" class="drilldown-overlay">
+            <div id="drilldown-panel" class="drilldown-panel">
+                <div class="drilldown-header">
+                    <span class="drilldown-title" id="drilldown-title">Category</span>
+                    <button class="drilldown-close" id="drilldown-close" title="Close">&#x2715;</button>
+                </div>
+                <div class="drilldown-body">
+                    <div class="drilldown-chart-wrap">
+                        <canvas id="drilldownChart"></canvas>
+                    </div>
+                    <div class="drilldown-list" id="drilldown-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Trend (line) -->
+        <div id="category-trend-section" class="chart-section-card" style="display: none;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                <p class="section-title" style="margin: 0;">Category Spending Trend</p>
+                <div class="trend-filters"
+                    style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-primary); padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid var(--border);">
+                    <select id="trendPreset"
+                        style="background: transparent; border: none; color: var(--text-primary); font-size: 0.85rem; outline: none; border-right: 1px solid var(--border); padding-right: 0.5rem;">
+                        <option value="3">3 months</option>
+                        <option value="6">6 months</option>
+                        <option value="12">1 year</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                    <input type="month" id="trendStartMonth"
+                        style="background: transparent; border: none; color: var(--text-primary); font-size: 0.85rem; outline: none;">
+                    <span style="color: var(--text-secondary);">-</span>
+                    <input type="month" id="trendEndMonth"
+                        style="background: transparent; border: none; color: var(--text-primary); font-size: 0.85rem; outline: none;">
+                </div>
+            </div>
+            <div id="trendNoDataMessage" class="no-data" style="display: none; width: 100%;">
+                No category spending duringthis period.
+            </div>
+            <div id="trendChartWrap" class="category-trend-chart-box">
+                <canvas id="categoryTrendChart"></canvas>
+            </div>
+        </div>
+
+    </div><!-- end .container -->
 
     <script src="/functions.js"></script>
     <script>
         let currentCurrency = 'usd';
         let startDate = 1;
         let pieChart = null;
+        let categoryTrendChart = null;
+        let drilldownChart = null;
         let currentDate = new Date();
         let allExpenses = [];
+        let allCategories = [];
         let disabledCategories = new Set();
+        let disabledTags = new Set();
         let categoryColors = {};
+        let tagColors = {};
+        let openDrilldownCategory = null;
         let allTags = new Set();
         let selectedTags = new Set();
 
@@ -153,6 +213,15 @@
             categories.forEach((category, index) => {
                 if (!categoryColors[category]) {
                     categoryColors[category] = colorPalette[index % colorPalette.length];
+                }
+            });
+        }
+
+        function assignTagColors(tags) {
+            tags.forEach((tag, index) => {
+                if (!tagColors[tag]) {
+                    // offset by a few so tag colours differ from category colours
+                    tagColors[tag] = colorPalette[(index + 5) % colorPalette.length];
                 }
             });
         }
@@ -190,30 +259,31 @@
 
         function updateChartAndLegend() {
             const monthExpenses = getMonthExpenses(allExpenses);
-            const chartBox = document.querySelector('.chart-box');
-            const legendBox = document.getElementById('customLegend');
+            const categoryChartBox = document.querySelector('.category-chart-box');
+            const categoryLegendBox = document.getElementById('categoryLegend');
             const cashflowSection = document.getElementById('cashflow-section');
             const noDataMessage = document.getElementById('noDataMessage');
             const hasExpenses = monthExpenses.some(e => e.amount < 0);
             if (!hasExpenses) {
-                if (pieChart) {
-                    pieChart.destroy();
-                    pieChart = null;
-                }
-                chartBox.style.display = 'none';
-                legendBox.style.display = 'none';
+                if (pieChart) { pieChart.destroy(); pieChart = null; }
+                categoryChartBox.style.display = 'none';
+                categoryLegendBox.style.display = 'none';
                 cashflowSection.style.display = 'none';
                 noDataMessage.style.display = 'block';
             } else {
-                chartBox.style.display = 'flex';
-                legendBox.style.display = 'flex';
+                categoryChartBox.style.display = 'flex';
+                categoryLegendBox.style.display = 'flex';
                 cashflowSection.style.display = 'flex';
                 noDataMessage.style.display = 'none';
-                
                 const categoryData = calculateCategoryBreakdown(monthExpenses);
                 updateCashflow(monthExpenses);
                 createPieChart(categoryData);
                 updateLegend(categoryData);
+            }
+            updateCategorySections();
+            // re-render drill-down if one is open
+            if (openDrilldownCategory) {
+                openCategoryDrillDown(openDrilldownCategory, getMonthExpenses(allExpenses));
             }
         }
 
@@ -221,11 +291,11 @@
             const income = calculateIncome(expenses);
             const expenseTotal = calculateExpenses(expenses);
             const balance = income - expenseTotal;
-            
+
             document.getElementById('cashflow-income').textContent = formatCurrency(income);
             document.getElementById('cashflow-expenses').textContent = formatCurrency(expenseTotal);
             document.getElementById('cashflow-balance').textContent = formatCurrency(balance);
-            
+
             const balanceElement = document.getElementById('cashflow-balance');
             if (balance >= 0) {
                 balanceElement.classList.add('positive');
@@ -272,14 +342,14 @@
         }
 
         function updateLegend(categoryData) {
-            const legendContainer = document.getElementById('customLegend');
+            const legendContainer = document.getElementById('categoryLegend');
             legendContainer.innerHTML = '';
             const monthExpenses = getMonthExpenses(allExpenses);
             const currentMonthCategories = [...new Set(monthExpenses
                 .filter(exp => exp.amount < 0)
                 .map(exp => exp.category))];
             const categoryMap = new Map(categoryData.map(cat => [cat.category, cat]));
-            
+
             currentMonthCategories.sort((a, b) => {
                 const dataA = categoryMap.get(a);
                 const dataB = categoryMap.get(b);
@@ -289,19 +359,22 @@
                 return a.localeCompare(b);
             }).forEach(category => {
                 const item = document.createElement('div');
-                item.className = `legend-item${disabledCategories.has(category) ? ' disabled' : ''}`;
+                item.className = `category-legend-item${disabledCategories.has(category) ? ' disabled' : ''}`;
+                item.style.cursor = 'pointer';
                 const color = categoryColors[category];
                 const categoryDataItem = categoryMap.get(category);
                 const percentage = categoryDataItem ? ` (${categoryDataItem.percentage.toFixed(1)}%)` : '';
                 const amount = categoryDataItem ? formatCurrency(categoryDataItem.total) : '';
                 item.innerHTML = `
                     <div class="color-box" style="background-color: ${color}"></div>
-                    <div class="legend-text">
-                        <span>${category}${percentage}</span>
-                        <span class="amount">${amount}</span>
+                    <div class="category-legend-text">
+                        <span>${escapeHTML(category)}${percentage}</span>
+                        <span class="amount">${amount} <i class="fa-solid fa-magnifying-glass" style="font-size:0.7rem;opacity:0.5;"></i></span>
                     </div>
                 `;
-                item.addEventListener('click', () => toggleCategory(category));
+                item.addEventListener('click', (e) => {
+                    handleLegendClick(item, category);
+                });
                 legendContainer.appendChild(item);
             });
 
@@ -312,7 +385,7 @@
             const totalsHtml = `
                 <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>Total:</span>
+                        <span style="font-weight:bold;">Total:</span>
                         <span class="amount">
                             ${formatCurrency(activeTotalExpenses)}
                         </span>
@@ -331,18 +404,238 @@
             updateChartAndLegend();
         }
 
+        // Single-click = drill-down; double-click = toggle
+        let legendClickTimer = null;
+        function handleLegendClick(item, category) {
+            if (legendClickTimer) {
+                clearTimeout(legendClickTimer);
+                legendClickTimer = null;
+                toggleCategory(category);
+            } else {
+                legendClickTimer = setTimeout(() => {
+                    legendClickTimer = null;
+                    const monthExp = getMonthExpenses(allExpenses);
+                    if (openDrilldownCategory === category) {
+                        closeCategoryDrillDown();
+                    } else {
+                        openCategoryDrillDown(category, monthExp);
+                    }
+                }, 220);
+            }
+        }
+
+        // ── Category drill-down ──────────────────────────────────
+        function openCategoryDrillDown(category, expenses) {
+            openDrilldownCategory = category;
+            const catExpenses = expenses.filter(e => e.category === category && e.amount < 0);
+            const overlay = document.getElementById('drilldown-overlay');
+            document.getElementById('drilldown-title').textContent = category + ' — Tag Breakdown';
+            overlay.classList.add('open');
+
+            // Build tag totals for this category
+            const tagTotals = {};
+            catExpenses.forEach(e => {
+                if (e.tags && e.tags.length > 0) {
+                    e.tags.forEach(t => {
+                        tagTotals[t] = (tagTotals[t] || 0) + Math.abs(e.amount);
+                    });
+                }
+            });
+            const tagEntries = Object.entries(tagTotals).sort((a, b) => b[1] - a[1]);
+
+            // Bar Chart
+            if (drilldownChart) { drilldownChart.destroy(); drilldownChart = null; }
+            if (tagEntries.length > 0) {
+                assignTagColors(tagEntries.map(([t]) => t));
+                drilldownChart = new Chart('drilldownChart', {
+                    type: 'bar',
+                    data: {
+                        labels: tagEntries.map(([t]) => t),
+                        datasets: [{
+                            data: tagEntries.map(([, v]) => v),
+                            backgroundColor: tagEntries.map(([t]) => tagColors[t] + 'CC'),
+                            borderColor: tagEntries.map(([t]) => tagColors[t]),
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: ctx => `${ctx.label}: ${formatCurrency(ctx.raw)}` } }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } }
+                        }
+                    }
+                });
+            }
+
+            // Expense list
+            const listEl = document.getElementById('drilldown-list');
+            if (catExpenses.length === 0) {
+                listEl.innerHTML = '<div class="drilldown-no-tags">No expenses in this category.</div>';
+                return;
+            }
+            const sorted = [...catExpenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+            let totalAmount = 0;
+            let rows = sorted.map(e => {
+                totalAmount += Math.abs(e.amount);
+                return `<tr>
+                    <td>${escapeHTML(e.name)}</td>
+                    <td style="font-family:monospace;white-space:nowrap; text-align: right;">${formatCurrency(Math.abs(e.amount))}</td>
+                </tr>`;
+            }).join('');
+            listEl.innerHTML = `<table>
+                <thead><tr><th>Name</th><th style="text-align: right;">Amount</th></tr></thead>
+                <tbody>${rows}</tbody>
+                <tfoot style="border-top: 1px solid var(--border);">
+                    <tr>
+                        <td style="font-weight:bold;">Total:</td>
+                        <td style="font-family:monospace; font-weight:bold; white-space:nowrap; text-align: right;">${formatCurrency(totalAmount)}</td>
+                    </tr>
+                </tfoot>
+            </table>`;
+        }
+
+        function closeCategoryDrillDown() {
+            openDrilldownCategory = null;
+            document.getElementById('drilldown-overlay').classList.remove('open');
+            if (drilldownChart) { drilldownChart.destroy(); drilldownChart = null; }
+        }
+
+        // ── Tag breakdown doughnut ─────────────────────────────────
+        function calculateTagBreakdown(expenses) {
+            const tagTotals = {};
+            let total = 0;
+            expenses.forEach(e => {
+                if (e.amount < 0 && !disabledTags.has('__none__')) {
+                    const tags = (e.tags || []).filter(t => !disabledTags.has(t));
+                    if (tags.length === 0) return;
+                    tags.forEach(t => {
+                        tagTotals[t] = (tagTotals[t] || 0) + Math.abs(e.amount);
+                        total += Math.abs(e.amount);
+                    });
+                }
+            });
+            return Object.entries(tagTotals)
+                .map(([tag, tot]) => ({ tag, total: tot, percentage: total > 0 ? (tot / total) * 100 : 0 }))
+                .sort((a, b) => b.total - a.total);
+        }
+
+        // ── Category trend line chart ──────────────────────────────
+        function getMonthsForTrend(startDateInput, endDateInput) {
+            const [sYear, sMonth] = startDateInput.split('-');
+            const [eYear, eMonth] = endDateInput.split('-');
+            let start = new Date(parseInt(sYear), parseInt(sMonth) - 1, 1);
+            let end = new Date(parseInt(eYear), parseInt(eMonth) - 1, 1);
+            const months = [];
+            while (start <= end) {
+                months.push(new Date(start));
+                start.setMonth(start.getMonth() + 1);
+            }
+            return months;
+        }
+
+        function calculateCategoryTrendData(categories, months) {
+            return categories.map((cat) => ({
+                label: cat,
+                data: months.map(m => {
+                    const probe = new Date(m.getFullYear(), m.getMonth(), 15);
+                    const old = currentDate;
+                    currentDate = probe;
+                    const exp = getMonthExpenses(allExpenses);
+                    currentDate = old;
+                    return exp.filter(e => e.amount < 0 && e.category === cat)
+                        .reduce((s, e) => s + Math.abs(e.amount), 0);
+                }),
+                borderColor: categoryColors[cat],
+                backgroundColor: categoryColors[cat] + '33',
+                tension: 0.3,
+                fill: false,
+                pointRadius: 4
+            }));
+        }
+
+        // ── Category Tags Pie Charts ───────────────────────────────
+        function updateCategorySections() {
+            const trendSection = document.getElementById('category-trend-section');
+            const monthExpenses = getMonthExpenses(allExpenses);
+            const expenseItems = monthExpenses.filter(e => e.amount < 0);
+
+            // 1. Trend Line
+            trendSection.style.display = 'block';
+
+            let startInput = document.getElementById('trendStartMonth').value;
+            let endInput = document.getElementById('trendEndMonth').value;
+
+            const months = getMonthsForTrend(startInput, endInput);
+            const monthLabels = months.map(m => m.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+
+            let datasets = calculateCategoryTrendData(allCategories, months);
+
+            // Calculate total spend over the period
+            datasets.forEach(ds => {
+                ds._totalSpend = ds.data.reduce((sum, val) => sum + val, 0);
+            });
+
+            // Filter out empty datasets and sort by highest total spend
+            datasets = datasets
+                .filter(ds => ds._totalSpend > 0)
+                .sort((a, b) => b._totalSpend - a._totalSpend);
+
+            // Hide non-top 10 categories by default
+            datasets.forEach((ds, index) => {
+                if (index >= 10) {
+                    ds.hidden = true;
+                }
+            });
+
+            const trendNoDataMsg = document.getElementById('trendNoDataMessage');
+            const trendChartWrap = document.getElementById('trendChartWrap');
+
+            if (datasets.length === 0) {
+                if (categoryTrendChart) { categoryTrendChart.destroy(); categoryTrendChart = null; }
+                trendChartWrap.style.display = 'none';
+                trendNoDataMsg.style.display = 'block';
+            } else {
+                trendChartWrap.style.display = 'block';
+                trendNoDataMsg.style.display = 'none';
+
+                if (categoryTrendChart) { categoryTrendChart.destroy(); categoryTrendChart = null; }
+                categoryTrendChart = new Chart('categoryTrendChart', {
+                    type: 'line',
+                    data: { labels: monthLabels, datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10 } },
+                            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}` } }
+                        },
+                        scales: {
+                            y: { type: 'logarithmic', ticks: { callback: v => formatCurrency(v) } }
+                        }
+                    }
+                });
+            }
+        }
+
         async function initialize() {
             try {
                 const configResponse = await fetch('/config');
                 if (!configResponse.ok) throw new Error('Failed to fetch configuration');
                 const config = await configResponse.json();
+                allCategories = config.categories;
                 const categorySelect = document.getElementById('category');
-                categorySelect.innerHTML = config.categories.map(cat => 
+                categorySelect.innerHTML = config.categories.map(cat =>
                     `<option value="${cat}">${cat}</option>`
                 ).join('');
                 currentCurrency = config.currency;
                 startDate = config.startDate;
-                
+
                 const response = await fetch('/expenses');
                 if (!response.ok) throw new Error('Failed to fetch data');
                 const data = await response.json();
@@ -354,12 +647,14 @@
                         exp.tags.forEach(tag => allTags.add(tag));
                     }
                 });
-                
+
                 const uniqueCategories = [...new Set(allExpenses.map(exp => exp.category))];
                 assignCategoryColors(uniqueCategories);
+                syncTrendDatesFromCurrentMonth();
                 updateMonthDisplay();
                 updateChartAndLegend();
                 setupTagInput();
+                setupCategoryDrillDownOverlay();
             } catch (error) {
                 console.error('Failed to initialize dashboard:', error);
             }
@@ -415,7 +710,7 @@
                 const value = input.value.trim().toLowerCase();
                 dropdown.innerHTML = '';
                 const filteredTags = [...allTags].filter(tag => tag.toLowerCase().includes(value) && !selectedTags.has(tag));
-                
+
                 if (value && ![...allTags].map(t => t.toLowerCase()).includes(value)) {
                     const newItem = document.createElement('div');
                     newItem.textContent = `+ Create "${input.value.trim()}"`;
@@ -430,7 +725,7 @@
                     item.onclick = () => addTag(tag);
                     dropdown.appendChild(item);
                 });
-                
+
                 dropdown.style.display = dropdown.children.length > 0 ? 'block' : 'none';
             });
 
@@ -451,19 +746,70 @@
             });
         }
 
+        function setupCategoryDrillDownOverlay() {
+            const overlay = document.getElementById('drilldown-overlay');
+            if (overlay) {
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) closeCategoryDrillDown();
+                });
+            }
+
+            document.getElementById('drilldown-close').addEventListener('click', closeCategoryDrillDown);
+        }
+
+        function syncTrendDatesFromCurrentMonth() {
+            const endMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+
+            const presetEl = document.getElementById('trendPreset');
+            let offset = 2; // Default 3 months
+            if (presetEl && presetEl.value !== 'custom') {
+                offset = parseInt(presetEl.value, 10) - 1;
+            } else if (presetEl && presetEl.value === 'custom') {
+                const oldStartVal = document.getElementById('trendStartMonth').value;
+                const oldEndVal = document.getElementById('trendEndMonth').value;
+                if (oldStartVal && oldEndVal) {
+                    const [sY, sM] = oldStartVal.split('-');
+                    const [eY, eM] = oldEndVal.split('-');
+                    offset = (parseInt(eY, 10) - parseInt(sY, 10)) * 12 + (parseInt(eM, 10) - parseInt(sM, 10));
+                }
+            }
+
+            const startMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - offset, 1);
+            document.getElementById('trendEndMonth').value = `${endMonthDate.getFullYear()}-${String(endMonthDate.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('trendStartMonth').value = `${startMonthDate.getFullYear()}-${String(startMonthDate.getMonth() + 1).padStart(2, '0')}`;
+        }
+
         document.getElementById('prevMonth').addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() - 1);
+            syncTrendDatesFromCurrentMonth();
             updateMonthDisplay();
             updateChartAndLegend();
+        });
+
+        document.getElementById('trendStartMonth').addEventListener('change', () => {
+            document.getElementById('trendPreset').value = 'custom';
+            updateCategorySections();
+        });
+        document.getElementById('trendEndMonth').addEventListener('change', () => {
+            document.getElementById('trendPreset').value = 'custom';
+            updateCategorySections();
+        });
+
+        document.getElementById('trendPreset').addEventListener('change', (e) => {
+            if (e.target.value !== 'custom') {
+                syncTrendDatesFromCurrentMonth();
+                updateCategorySections();
+            }
         });
 
         document.getElementById('nextMonth').addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() + 1);
+            syncTrendDatesFromCurrentMonth();
             updateMonthDisplay();
             updateChartAndLegend();
         });
 
-        document.getElementById('toggleExpenseFormBtn').addEventListener('click', function() {
+        document.getElementById('toggleExpenseFormBtn').addEventListener('click', function () {
             const formContainer = document.getElementById('addExpenseContainer');
             const isHidden = formContainer.style.display === 'none' || formContainer.style.display === '';
 
@@ -534,4 +880,5 @@
         });
     </script>
 </body>
+
 </html>
