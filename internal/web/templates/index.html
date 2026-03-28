@@ -192,6 +192,27 @@
             </div>
         </div>
 
+        <!-- Tag Spend Leaderboard Section -->
+        <div id="tag-leaderboard-section" class="chart-section-card">
+            <div class="leaderboard-header">
+                <p class="section-title" style="margin-bottom: 0;">Tag Spend Leaderboard</p>
+                <select id="tagLeaderboardLimit" class="nav-button"
+                    style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                    <option value="10">Top 10</option>
+                    <option value="15">Top 15</option>
+                    <option value="20">Top 20</option>
+                    <option value="all">All Tags</option>
+                </select>
+            </div>
+            <div id="tagLeaderboardNoData" class="no-data" style="display:none; padding: 2rem; text-align: center;">
+                No tagged spending found for this month.
+            </div>
+            <div id="tagLeaderboardChartWrap" class="tag-leaderboard-chart-box">
+                <canvas id="tagLeaderboardChart"></canvas>
+            </div>
+            <div id="tagLeaderboardList" class="tag-leaderboard-list"></div>
+        </div>
+
     </div><!-- end .container -->
 
     <script src="/functions.js"></script>
@@ -200,6 +221,7 @@
         let startDate = 1;
         let pieChart = null;
         let categoryTrendChart = null;
+        let tagLeaderboardChart = null;
         let drilldownChart = null;
         let currentDate = new Date();
         let allExpenses = [];
@@ -211,6 +233,7 @@
         let openDrilldownCategory = null;
         let allTags = new Set();
         let selectedTags = new Set();
+        let tagDetailCharts = new Map();
 
         function assignCategoryColors(categories) {
             categories.forEach((category, index) => {
@@ -284,6 +307,7 @@
                 updateLegend(categoryData);
             }
             updateCategorySections();
+            updateTagLeaderboard();
             // re-render drill-down if one is open
             if (openDrilldownCategory) {
                 openCategoryDrillDown(openDrilldownCategory, getMonthExpenses(allExpenses));
@@ -626,6 +650,215 @@
             }
         }
 
+        function updateTagLeaderboard() {
+            const currMonthExp = getMonthExpenses(allExpenses).filter(e => e.amount < 0);
+            const prevDate = new Date(currentDate);
+            prevDate.setMonth(prevDate.getMonth() - 1);
+            const { start: pStart, end: pEnd } = getMonthBounds(prevDate);
+            const prevMonthExp = allExpenses.filter(exp => {
+                const d = new Date(exp.date);
+                return d >= pStart && d <= pEnd && exp.amount < 0;
+            });
+
+            const getTagTotals = (expenses) => {
+                const totals = {};
+                expenses.forEach(e => {
+                    if (e.tags) {
+                        e.tags.forEach(t => {
+                            totals[t] = (totals[t] || 0) + Math.abs(e.amount);
+                        });
+                    }
+                });
+                return totals;
+            };
+
+            const currTagTotals = getTagTotals(currMonthExp);
+            const prevTagTotals = getTagTotals(prevMonthExp);
+
+            let sortedTags = Object.entries(currTagTotals).sort((a, b) => b[1] - a[1]);
+            const limitVal = document.getElementById('tagLeaderboardLimit').value;
+            const limit = limitVal === 'all' ? sortedTags.length : parseInt(limitVal, 10);
+            const topTags = sortedTags.slice(0, limit);
+
+            const noDataMsg = document.getElementById('tagLeaderboardNoData');
+            const chartWrap = document.getElementById('tagLeaderboardChartWrap');
+            const listEl = document.getElementById('tagLeaderboardList');
+
+            if (topTags.length === 0) {
+                chartWrap.style.display = 'none';
+                listEl.style.display = 'none';
+                noDataMsg.style.display = 'block';
+                if (tagLeaderboardChart) { tagLeaderboardChart.destroy(); tagLeaderboardChart = null; }
+                return;
+            }
+
+            noDataMsg.style.display = 'none';
+            chartWrap.style.display = 'block';
+            listEl.style.display = 'flex';
+
+            const leaderboardData = topTags.map(([tag, amount], index) => {
+                const prevAmount = prevTagTotals[tag] || 0;
+                let delta = 0;
+                let deltaColorClass = 'neutral';
+                let deltaArrow = '';
+
+                if (prevAmount > 0) {
+                    delta = ((amount - prevAmount) / prevAmount) * 100;
+                } else if (amount > 0) {
+                    delta = 100;
+                }
+
+                if (delta > 0.1) {
+                    deltaColorClass = 'increase';
+                    deltaArrow = '↑';
+                } else if (delta < -0.1) {
+                    deltaColorClass = 'decrease';
+                    deltaArrow = '↓';
+                }
+
+                return { tag, amount, delta, deltaColorClass, deltaArrow, rank: index + 1 };
+            });
+
+            if (tagLeaderboardChart) tagLeaderboardChart.destroy();
+            assignTagColors(leaderboardData.map(d => d.tag));
+
+            tagLeaderboardChart = new Chart('tagLeaderboardChart', {
+                type: 'bar',
+                data: {
+                    labels: leaderboardData.map(d => d.tag),
+                    datasets: [{
+                        data: leaderboardData.map(d => d.amount),
+                        backgroundColor: leaderboardData.map(d => tagColors[d.tag] || '#ccc'),
+                        borderColor: '#1a1a1a',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.label}: ${formatCurrency(ctx.raw)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } },
+                        y: { ticks: { color: '#b3b3b3' } }
+                    }
+                }
+            });
+
+            // Clear all existing detail charts when the leaderboard is re-rendered
+            tagDetailCharts.forEach(chart => chart.destroy());
+            tagDetailCharts.clear();
+
+            listEl.innerHTML = leaderboardData.map(d => `
+                <div class="tag-leaderboard-item" data-tag="${escapeHTML(d.tag)}">
+                    <div class="tag-leaderboard-row" onclick="toggleTagDetail('${escapeHTML(d.tag)}', this)">
+                        <div class="tag-info">
+                            <span class="tag-rank">#${d.rank}</span>
+                            <span class="tag-name">${escapeHTML(d.tag)}</span>
+                        </div>
+                        <div class="tag-values">
+                            <span class="tag-amount">${formatCurrency(d.amount)}</span>
+                            <span class="tag-delta ${d.deltaColorClass}">
+                                ${d.deltaArrow} ${Math.abs(d.delta).toFixed(1)}%
+                            </span>
+                        </div>
+                    </div>
+                    <div class="tag-leaderboard-detail"></div>
+                </div>
+            `).join('');
+        }
+
+        function toggleTagDetail(tag, rowElement) {
+            const itemElement = rowElement.closest('.tag-leaderboard-item');
+            const detailElement = itemElement.querySelector('.tag-leaderboard-detail');
+            const isExpanded = itemElement.classList.contains('expanded');
+
+            if (isExpanded) {
+                // Collapse
+                itemElement.classList.remove('expanded');
+                detailElement.style.display = 'none';
+
+                // Cleanup chart
+                if (tagDetailCharts.has(tag)) {
+                    tagDetailCharts.get(tag).destroy();
+                    tagDetailCharts.delete(tag);
+                }
+                detailElement.innerHTML = '';
+            } else {
+                // Expand
+                itemElement.classList.add('expanded');
+                detailElement.style.display = 'block';
+                renderTagDetail(tag, detailElement);
+            }
+        }
+
+        function renderTagDetail(tag, container) {
+            const monthExpenses = getMonthExpenses(allExpenses).filter(e => e.amount < 0);
+            const tagExpenses = monthExpenses.filter(e => e.tags && e.tags.includes(tag));
+
+            const categoryTotals = {};
+            tagExpenses.forEach(e => {
+                categoryTotals[e.category] = (categoryTotals[e.category] || 0) + Math.abs(e.amount);
+            });
+
+            const sortedEntries = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+            const labels = sortedEntries.map(e => e[0]);
+            const data = sortedEntries.map(e => e[1]);
+            const colors = labels.map(l => categoryColors[l] || '#ccc');
+
+            const canvasId = `tag-chart-${tag.replace(/\s+/g, '-')}`;
+
+            container.innerHTML = `
+                <div class="tag-detail-layout">
+                    <div class="tag-detail-chart-container">
+                        <canvas id="${canvasId}"></canvas>
+                    </div>
+                    <div class="tag-detail-list-container">
+                        ${sortedEntries.map(([cat, amount]) => `
+                            <div class="tag-detail-cat-row">
+                                <div class="tag-detail-cat-label">
+                                    <div class="tag-detail-dot" style="background-color: ${categoryColors[cat] || '#ccc'}"></div>
+                                    <span>${escapeHTML(cat)}</span>
+                                </div>
+                                <span class="tag-amount">${formatCurrency(amount)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 1,
+                        borderColor: '#081528' // Match background for separation
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            tagDetailCharts.set(tag, chart);
+        }
+
         async function initialize() {
             try {
                 const configResponse = await fetch('/config');
@@ -811,6 +1044,8 @@
             updateMonthDisplay();
             updateChartAndLegend();
         });
+
+        document.getElementById('tagLeaderboardLimit').addEventListener('change', updateTagLeaderboard);
 
         document.getElementById('toggleExpenseFormBtn').addEventListener('click', function () {
             const formContainer = document.getElementById('addExpenseContainer');
