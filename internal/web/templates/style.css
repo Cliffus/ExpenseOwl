@@ -175,17 +175,7 @@ header {
     opacity: 0.5;
 }
 
-.category-trend-chart-box {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    padding: 1rem;
-}
 
-.category-trend-chart-box canvas {
-    width: 100%;
-    max-height: 800px;
-}
 
 .color-box {
     width: 16px;
@@ -721,18 +711,6 @@ header {
 
     .category-chart-box canvas {
         max-height: 300px;
-    }
-
-    .category-trend-chart-box {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin: auto;
-    }
-
-    .category-trend-chart-box canvas {
-        width: 100%;
-        max-height: 600px;
     }
 
     .category-legend-box {
