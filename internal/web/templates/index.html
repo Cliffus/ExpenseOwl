@@ -563,7 +563,7 @@
             const days = [];
             let curr = new Date(start.getFullYear(), start.getMonth(), start.getDate());
             const targetEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-            
+
             while (curr <= targetEnd) {
                 days.push(new Date(curr));
                 curr.setDate(curr.getDate() + 1);
@@ -597,12 +597,10 @@
             });
             const prevTotal = prevExpenses.reduce((sum, e) => sum + Math.abs(e.amount), 0);
 
-
             // Calculate current month's total income for 'Income Ceiling'
             const incomeTotal = getMonthExpenses(allExpenses)
                 .filter(e => e.amount > 0)
                 .reduce((sum, e) => sum + e.amount, 0);
-
 
             const labels = days.map(d => d.getDate());
 
@@ -674,13 +672,14 @@
 
         function updateTagLeaderboard() {
             const currMonthExp = getMonthExpenses(allExpenses).filter(e => e.amount < 0);
-            const prevDate = new Date(currentDate);
-            prevDate.setMonth(prevDate.getMonth() - 1);
-            const { start: pStart, end: pEnd } = getMonthBounds(prevDate);
+            const { start: currentStart } = getMonthBounds(currentDate);
+            const prevMonthDate = new Date(currentStart.getTime() - 1);
+            const { start: pStart, end: pEnd } = getMonthBounds(prevMonthDate);
             const prevMonthExp = allExpenses.filter(exp => {
                 const d = new Date(exp.date);
                 return d >= pStart && d <= pEnd && exp.amount < 0;
             });
+
 
             const getTagTotals = (expenses) => {
                 const totals = {};
