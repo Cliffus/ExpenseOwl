@@ -588,14 +588,15 @@
             });
 
             // Previous month calculation for budget threshold
-            const prevMonthDate = new Date(currentDate);
-            prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+            const { start: currentStart } = getMonthBounds(currentDate);
+            const prevMonthDate = new Date(currentStart.getTime() - 1);
             const prevBounds = getMonthBounds(prevMonthDate);
             const prevExpenses = allExpenses.filter(e => {
                 const d = new Date(e.date);
                 return d >= prevBounds.start && d <= prevBounds.end && e.amount < 0;
             });
             const prevTotal = prevExpenses.reduce((sum, e) => sum + Math.abs(e.amount), 0);
+
 
             // Calculate current month's total income for 'Income Ceiling'
             const incomeTotal = getMonthExpenses(allExpenses)
@@ -1015,13 +1016,15 @@
         }
 
         document.getElementById('prevMonth').addEventListener('click', () => {
-            currentDate.setMonth(currentDate.getMonth() - 1);
+            const { start } = getMonthBounds(currentDate);
+            currentDate = new Date(start.getTime() - 1);
             updateMonthDisplay();
             updateChartAndLegend();
         });
 
         document.getElementById('nextMonth').addEventListener('click', () => {
-            currentDate.setMonth(currentDate.getMonth() + 1);
+            const { end } = getMonthBounds(currentDate);
+            currentDate = new Date(end.getTime() + 1);
             updateMonthDisplay();
             updateChartAndLegend();
         });
