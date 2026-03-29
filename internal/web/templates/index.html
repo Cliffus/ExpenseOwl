@@ -165,6 +165,17 @@
 
 
 
+        <!-- Cumulative Burn Rate Section -->
+        <div id="burn-rate-section" class="chart-section-card">
+            <p class="section-title">Cumulative Burn Rate</p>
+            <div id="burnRateNoData" class="no-data" style="display:none; padding: 2rem; text-align: center;">
+                No spending data for this month.
+            </div>
+            <div id="burnRateChartWrap" class="burn-rate-chart-box">
+                <canvas id="burnRateChart"></canvas>
+            </div>
+        </div>
+
         <!-- Tag Spend Leaderboard Section -->
         <div id="tag-leaderboard-section" class="chart-section-card">
             <div class="leaderboard-header">
@@ -207,6 +218,7 @@
         let allTags = new Set();
         let selectedTags = new Set();
         let tagDetailCharts = new Map();
+        let burnRateChart = null;
 
         function assignCategoryColors(categories) {
             categories.forEach((category, index) => {
@@ -281,6 +293,7 @@
             }
 
             updateTagLeaderboard();
+            updateBurnRateChart();
             // re-render drill-down if one is open
             if (openDrilldownCategory) {
                 openCategoryDrillDown(openDrilldownCategory, getMonthExpenses(allExpenses));
@@ -526,6 +539,137 @@
         }
 
 
+
+        function updateBurnRateChart() {
+            const bounds = getMonthBounds(currentDate);
+            const expenses = getMonthExpenses(allExpenses).filter(e => e.amount < 0);
+
+            const noDataMsg = document.getElementById('burnRateNoData');
+            const chartWrap = document.getElementById('burnRateChartWrap');
+
+            if (expenses.length === 0) {
+                chartWrap.style.display = 'none';
+                noDataMsg.style.display = 'block';
+                if (burnRateChart) { burnRateChart.destroy(); burnRateChart = null; }
+                return;
+            }
+
+            noDataMsg.style.display = 'none';
+            chartWrap.style.display = 'block';
+
+            // Generate all days in the current budget month range
+            const start = new Date(bounds.start);
+            const end = new Date(bounds.end);
+            const days = [];
+            let curr = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            const targetEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+            
+            while (curr <= targetEnd) {
+                days.push(new Date(curr));
+                curr.setDate(curr.getDate() + 1);
+            }
+
+            // Calculate daily totals
+            const dailyTotals = days.map(day => {
+                const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+                const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999);
+                return expenses.filter(e => {
+                    const d = new Date(e.date);
+                    return d >= dayStart && d <= dayEnd;
+                }).reduce((sum, e) => sum + Math.abs(e.amount), 0);
+            });
+
+            // Calculate cumulative totals (carry-over logic is inherent in simple sum + previous)
+            const cumulativeData = [];
+            let runningTotal = 0;
+            dailyTotals.forEach(val => {
+                runningTotal += val;
+                cumulativeData.push(runningTotal);
+            });
+
+            // Previous month calculation for budget threshold
+            const prevMonthDate = new Date(currentDate);
+            prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+            const prevBounds = getMonthBounds(prevMonthDate);
+            const prevExpenses = allExpenses.filter(e => {
+                const d = new Date(e.date);
+                return d >= prevBounds.start && d <= prevBounds.end && e.amount < 0;
+            });
+            const prevTotal = prevExpenses.reduce((sum, e) => sum + Math.abs(e.amount), 0);
+
+            // Calculate current month's total income for 'Income Ceiling'
+            const incomeTotal = getMonthExpenses(allExpenses)
+                .filter(e => e.amount > 0)
+                .reduce((sum, e) => sum + e.amount, 0);
+
+
+            const labels = days.map(d => d.getDate());
+
+            if (burnRateChart) { burnRateChart.destroy(); }
+
+            const ctx = document.getElementById('burnRateChart').getContext('2d');
+            burnRateChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Cumulative Spend',
+                            data: cumulativeData,
+                            borderColor: '#4ECDC4',
+                            backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 3,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Prev. Month Total',
+                            data: new Array(labels.length).fill(prevTotal),
+                            borderColor: 'rgba(255, 107, 107, 0.5)',
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Income Ceiling',
+                            data: new Array(labels.length).fill(incomeTotal),
+                            borderColor: '#38B000',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            borderDash: []
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 12, padding: 10 } },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: (val) => formatCurrency(val) },
+                            grid: { color: 'rgba(128, 128, 128, 0.1)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
 
         function updateTagLeaderboard() {
             const currMonthExp = getMonthExpenses(allExpenses).filter(e => e.amount < 0);

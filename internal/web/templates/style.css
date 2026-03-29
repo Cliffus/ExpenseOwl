@@ -1131,6 +1131,10 @@ header {
     position: relative;
 }
 
+.burn-rate-chart-box {
+    height: 350px;
+}
+
 .tag-leaderboard-list {
     display: flex;
     flex-direction: column;
