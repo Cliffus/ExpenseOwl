@@ -185,7 +185,7 @@
         function calculateMonthlyBars(expenses, year) {
             const now = new Date();
             const maxMonth = (year === now.getFullYear()) ? now.getMonth() : (year > now.getFullYear() ? -1 : 11);
-            if (maxMonth === -1) return { income: [], expenses: [], balance: [] };
+            if (maxMonth === -1) return { income: [], expenses: [], balance: [], savingsRate: [] };
 
             const months = Array.from({ length: maxMonth + 1 }, (_, i) => i);
             const income = months.map(m =>
@@ -197,7 +197,12 @@
                     .reduce((s, e) => s + Math.abs(e.amount), 0)
             );
             const balanceArr = months.map((m, i) => income[i] - expenseArr[i]);
-            return { income, expenses: expenseArr, balance: balanceArr };
+            const savingsRateArr = months.map((m, i) => {
+                const inc = income[i];
+                if (inc === 0) return 0;
+                return ((inc - expenseArr[i]) / inc) * 100;
+            });
+            return { income, expenses: expenseArr, balance: balanceArr, savingsRate: savingsRateArr };
         }
 
         const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -207,9 +212,6 @@
             if (data.income.length === 0) return;
 
             const computedStyle = getComputedStyle(document.body);
-            // Derive balance color adapting to theme: --chart-balance-line (Navy in light, Gold in dark)
-            const balanceColor = computedStyle.getPropertyValue('--chart-balance-line').trim() || '#FFD700';
-
             monthlyBarChart = new Chart('monthlyBarChart', {
                 type: 'bar',
                 data: {
@@ -217,12 +219,11 @@
                     datasets: [
                         {
                             type: 'line',
-                            label: 'Balance',
-                            data: data.balance,
-                            borderColor: balanceColor,
-                            backgroundColor: balanceColor,
+                            label: 'Savings Rate',
+                            data: data.savingsRate,
+                            borderColor: 'rgba(255, 215, 0, 1)',
+                            backgroundColor: 'rgba(255, 215, 0, 1)',
                             borderWidth: 2,
-                            pointBackgroundColor: balanceColor,
                             pointRadius: 4,
                             pointHoverRadius: 6,
                             fill: false,
@@ -247,6 +248,16 @@
                             borderWidth: 1,
                             borderRadius: 4,
                             yAxisID: 'y'
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Balance',
+                            data: data.balance,
+                            backgroundColor: 'rgba(59, 130, 246, 0.7)', // Blue
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            yAxisID: 'y'
                         }
                     ]
                 },
@@ -259,7 +270,16 @@
                     },
                     plugins: {
                         legend: { position: 'top', labels: { boxWidth: 14, padding: 12 } },
-                        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}` } }
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => {
+                                    if (ctx.dataset.label === 'Savings Rate') {
+                                        return `Savings Rate: ${ctx.raw.toFixed(1)}%`;
+                                    }
+                                    return `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`;
+                                }
+                            }
+                        }
                     },
                     scales: {
                         y: {
@@ -275,8 +295,13 @@
                             display: true,
                             position: 'right',
                             beginAtZero: true,
-                            ticks: { callback: v => formatCurrency(v) },
-                            grid: { drawOnChartArea: false }
+                            ticks: { callback: v => `${v.toFixed(0)}%` },
+                            grid: { drawOnChartArea: false },
+                            title: {
+                                display: true,
+                                text: 'Savings Rate (%)',
+                                color: '#b3b3b3'
+                            }
                         }
                     }
                 }

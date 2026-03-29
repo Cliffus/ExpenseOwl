@@ -6,7 +6,6 @@
     --text-secondary: #b3b3b3;
     --border: #1a365d;
     --accent: #69afde;
-    --chart-balance-line: #FFD700;
 }
 
 /* Light theme override */
@@ -16,7 +15,6 @@ html[data-theme='light'] {
     --text-primary: #2e2e2e;
     --text-secondary: #3e3e3e;
     --border: #e6ddd4;
-    --chart-balance-line: #1e3a8a;
 }
 
 /* Dark theme override */
@@ -26,7 +24,6 @@ html[data-theme='dark'] {
     --text-primary: #f4f4f4;
     --text-secondary: #b3b3b3;
     --border: #1a365d;
-    --chart-balance-line: #FFD700;
 }
 
 /* System preference for light mode (when no theme is set) */
@@ -37,7 +34,6 @@ html[data-theme='dark'] {
         --text-primary: #2e2e2e;
         --text-secondary: #3e3e3e;
         --border: #e6ddd4;
-        --chart-balance-line: #1e3a8a;
     }
 }
 
