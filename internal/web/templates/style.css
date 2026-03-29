@@ -1141,6 +1141,32 @@ header {
     gap: 0.5rem;
 }
 
+.category-mom-delta {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+.category-mom-delta.increase {
+    color: #ff4d4d;
+    background-color: rgba(255, 77, 77, 0.1);
+}
+
+.category-mom-delta.decrease {
+    color: #00ff88;
+    background-color: rgba(0, 255, 136, 0.1);
+}
+
+.category-mom-delta.new {
+    color: var(--accent);
+    background-color: rgba(105, 175, 222, 0.1);
+}
+
 .tag-leaderboard-item {
     display: flex;
     flex-direction: column;
