@@ -1046,36 +1046,7 @@ header {
     position: relative;
 }
 
-.year-breakdowns-grid {
-    display: flex;
-    gap: 1rem;
-    align-items: flex-start;
-}
-
-.year-doughnut-card {
-    flex: 1;
-    background-color: var(--bg-secondary);
-    border-radius: 8px;
-    padding: 1rem;
-}
-
-.year-doughnut-wrap {
-    height: 260px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.year-doughnut-legend {
-    margin-top: 0.5rem;
-    max-height: 150px;
-    overflow-y: auto;
-}
-
-.year-topbar-wrap {
-    height: 300px;
-    position: relative;
-}
+/* ── Responsive overrides for new sections ───────────────── */
 
 /* ── Responsive overrides for new sections ───────────────── */
 @media (max-width: 768px) {
@@ -1101,14 +1072,6 @@ header {
         max-height: 180px;
     }
 
-    .year-breakdowns-grid {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .year-topbar-wrap {
-        height: 240px;
-    }
 }
 
 /* ── Dark mode date picker overrides ─────────────────────── */

@@ -82,48 +82,6 @@
             </div>
         </div>
 
-        <!-- Category drill-down panel (shared across category charts) -->
-        <div id="drilldown-overlay" class="drilldown-overlay">
-            <div id="drilldown-panel" class="drilldown-panel">
-                <div class="drilldown-header">
-                    <span class="drilldown-title" id="drilldown-title">Category</span>
-                    <button class="drilldown-close" id="drilldown-close" title="Close">&#x2715;</button>
-                </div>
-                <div class="drilldown-body">
-                    <div class="drilldown-chart-wrap">
-                        <canvas id="drilldownChart"></canvas>
-                    </div>
-                    <div class="drilldown-list" id="drilldown-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Category + Tag breakdown doughnuts -->
-        <div id="breakdown-section" class="year-breakdowns-grid" style="display:none; margin-bottom: 1.5rem;">
-            <div class="year-doughnut-card">
-                <p class="section-title">Expenses by Category</p>
-                <div class="year-doughnut-wrap">
-                    <canvas id="yearCatChart"></canvas>
-                </div>
-                <div class="year-doughnut-legend" id="yearCatLegend"></div>
-            </div>
-            <div class="year-doughnut-card">
-                <p class="section-title">Expenses by Tag</p>
-                <div class="year-doughnut-wrap">
-                    <canvas id="yearTagChart"></canvas>
-                </div>
-                <div class="year-doughnut-legend" id="yearTagLegend"></div>
-            </div>
-        </div>
-
-        <!-- Top tags horizontal bar -->
-        <div id="top-tags-section" class="chart-section-card" style="display:none;">
-            <p class="section-title">Top Tags by Annual Spend</p>
-            <div class="year-topbar-wrap">
-                <canvas id="topTagsChart"></canvas>
-            </div>
-        </div>
-
     </div><!-- end .container -->
 
     <script src="/functions.js"></script>
@@ -132,14 +90,8 @@
         let startDate = 1;
         let currentYear = new Date().getFullYear();
         let allExpenses = [];
-        let categoryColors = {};
-        let tagColors = {};
-        let drilldownChart = null;
         let monthlyBarChart = null;
-        let yearCatChart = null;
-        let yearTagChart = null;
-        let topTagsChart = null;
-        let openDrilldownCategory = null;
+
 
         Chart.defaults.color = '#b3b3b3';
         Chart.defaults.borderColor = '#606060';
@@ -152,17 +104,6 @@
             });
         }
 
-        function assignCategoryColors(categories) {
-            categories.forEach((cat, idx) => {
-                if (!categoryColors[cat]) categoryColors[cat] = colorPalette[idx % colorPalette.length];
-            });
-        }
-
-        function assignTagColors(tags) {
-            tags.forEach((tag, idx) => {
-                if (!tagColors[tag]) tagColors[tag] = colorPalette[(idx + 5) % colorPalette.length];
-            });
-        }
 
         // ── Yearly cashflow summary ────────────────────────────────
         function updateYearlyCashflow(expenses) {
@@ -309,196 +250,17 @@
         }
 
         // ── Generic doughnut builder ───────────────────────────────
-        function buildDoughnut(canvasId, labels, data, colors) {
-            return new Chart(canvasId, {
-                type: 'doughnut',
-                data: {
-                    labels,
-                    datasets: [{ data, backgroundColor: colors, borderColor: '#1a1a1a', borderWidth: 1 }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => {
-                                    const pct = ((ctx.raw / ctx.dataset.data.reduce((s, v) => s + v, 0)) * 100).toFixed(1);
-                                    return `${ctx.label}: ${formatCurrency(ctx.raw)} (${pct}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // ── Legend builder ─────────────────────────────────────────
-        function buildLegend(container, entries, colors, onClickCb) {
-            container.innerHTML = '';
-            const total = entries.reduce((s, e) => s + e.value, 0);
-            entries.forEach(({ label, value }) => {
-                const item = document.createElement('div');
-                item.className = 'category-legend-item';
-                if (onClickCb) item.style.cursor = 'pointer';
-                const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                item.innerHTML = `
-                    <div class="color-box" style="background-color:${colors[label]}"></div>
-                    <div class="category-legend-text">
-                        <span>${escapeHTML(label)} (${pct}%)</span>
-                        <span class="amount">${formatCurrency(value)}${onClickCb ? ' <i class="fa-solid fa-magnifying-glass" style="font-size:0.7rem;opacity:0.5;"></i>' : ''}</span>
-                    </div>`;
-                if (onClickCb) item.addEventListener('click', () => onClickCb(label));
-                container.appendChild(item);
-            });
-        }
-
-        // ── Category drill-down (re-used pattern from index.html) ──
-        function openCategoryDrillDown(category, expenses) {
-            openDrilldownCategory = category;
-            const catExpenses = expenses.filter(e => e.category === category && e.amount < 0);
-            const overlay = document.getElementById('drilldown-overlay');
-            document.getElementById('drilldown-title').textContent = category + ' — Tag Breakdown';
-            overlay.classList.add('open');
-
-            // Build tag totals for this category
-            const tagTotals = {};
-            catExpenses.forEach(e => {
-                if (e.tags && e.tags.length > 0) {
-                    e.tags.forEach(t => {
-                        tagTotals[t] = (tagTotals[t] || 0) + Math.abs(e.amount);
-                    });
-                }
-            });
-            const tagEntries = Object.entries(tagTotals).sort((a, b) => b[1] - a[1]);
-
-            // Bar Chart
-            if (drilldownChart) { drilldownChart.destroy(); drilldownChart = null; }
-            if (tagEntries.length > 0) {
-                assignTagColors(tagEntries.map(([t]) => t));
-                drilldownChart = new Chart('drilldownChart', {
-                    type: 'bar',
-                    data: {
-                        labels: tagEntries.map(([t]) => t),
-                        datasets: [{
-                            data: tagEntries.map(([, v]) => v),
-                            backgroundColor: tagEntries.map(([t]) => tagColors[t] + 'CC'),
-                            borderColor: tagEntries.map(([t]) => tagColors[t]),
-                            borderWidth: 1,
-                            borderRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: { callbacks: { label: ctx => `${ctx.label}: ${formatCurrency(ctx.raw)}` } }
-                        },
-                        scales: {
-                            y: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } }
-                        }
-                    }
-                });
-            }
-
-            // Expense list
-            const listEl = document.getElementById('drilldown-list');
-            if (catExpenses.length === 0) {
-                listEl.innerHTML = '<div class="drilldown-no-tags">No expenses in this category.</div>';
-                return;
-            }
-            const sorted = [...catExpenses].sort((a, b) => new Date(b.date) - new Date(a.date));
-            let totalAmount = 0;
-            let rows = sorted.map(e => {
-                totalAmount += Math.abs(e.amount);
-                return `<tr>
-                    <td>${escapeHTML(e.name)}</td>
-                    <td style="font-family:monospace;white-space:nowrap; text-align: right;">${formatCurrency(Math.abs(e.amount))}</td>
-                </tr>`;
-            }).join('');
-            listEl.innerHTML = `<table>
-                <thead><tr><th>Name</th><th style="text-align: right;">Amount</th></tr></thead>
-                <tbody>${rows}</tbody>
-                <tfoot style="border-top: 1px solid var(--border);">
-                    <tr>
-                        <td style="font-weight:bold;">Total:</td>
-                        <td style="font-family:monospace; font-weight:bold; white-space:nowrap; text-align: right;">${formatCurrency(totalAmount)}</td>
-                    </tr>
-                </tfoot>
-            </table>`;
-        }
-
-        function setupCategoryDrillDownOverlay() {
-            const overlay = document.getElementById('drilldown-overlay');
-            if (overlay) {
-                overlay.addEventListener('click', (e) => {
-                    if (e.target === overlay) closeCategoryDrillDown();
-                });
-            }
-
-            document.getElementById('drilldown-close').addEventListener('click', closeCategoryDrillDown);
-        }
-
-        function closeCategoryDrillDown() {
-            openDrilldownCategory = null;
-            document.getElementById('drilldown-overlay').classList.remove('open');
-            if (drilldownChart) { drilldownChart.destroy(); drilldownChart = null; }
-        }
-
-        // ── Top tags horizontal bar ────────────────────────────────
-        function createTopTagsChart(tagEntries) {
-            if (topTagsChart) { topTagsChart.destroy(); topTagsChart = null; }
-            const top = tagEntries.slice(0, 12); // cap at 12 for readability
-            topTagsChart = new Chart('topTagsChart', {
-                type: 'bar',
-                data: {
-                    labels: top.map(([t]) => t),
-                    datasets: [{
-                        label: 'Annual Spend',
-                        data: top.map(([, v]) => v),
-                        backgroundColor: top.map(([t]) => tagColors[t]),
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: ctx => formatCurrency(ctx.raw) } }
-                    },
-                    scales: {
-                        x: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } }
-                    }
-                }
-            });
-        }
 
         // ── Master yearly update ───────────────────────────────────
         function updateYear() {
-            document.getElementById('currentYear').textContent = currentYear;
-            closeCategoryDrillDown();
-
-            let yearExp = getYearExpenses(currentYear);
-
-            // Limit to YTD for current year
-            const now = new Date();
-            if (currentYear === now.getFullYear()) {
-                const maxMonth = now.getMonth();
-                yearExp = yearExp.filter(e => new Date(e.date).getMonth() <= maxMonth);
-            } else if (currentYear > now.getFullYear()) {
-                yearExp = [];
-            }
-
-            const hasData = yearExp.some(e => e.amount < 0 || e.amount > 0);
+            const yearExp = getYearExpenses(currentYear);
+            const hasData = yearExp.length > 0;
+            const currentYearEl = document.getElementById('currentYear');
+            currentYearEl.textContent = currentYear;
 
             document.getElementById('noDataMessage').style.display = hasData ? 'none' : 'block';
+            document.getElementById('cashflow-section').style.display = hasData ? 'flex' : 'none';
             document.getElementById('monthly-bar-section').style.display = hasData ? 'block' : 'none';
-            document.getElementById('breakdown-section').style.display = hasData ? 'flex' : 'none';
-            document.getElementById('top-tags-section').style.display = hasData ? 'block' : 'none';
 
             updateYearlyCashflow(yearExp);
 
@@ -507,59 +269,6 @@
             // Monthly bar chart
             const barData = calculateMonthlyBars(yearExp, currentYear);
             createMonthlyBarChart(barData);
-
-            // Category doughnut
-            const catTotals = {};
-            yearExp.filter(e => e.amount < 0).forEach(e => {
-                catTotals[e.category] = (catTotals[e.category] || 0) + Math.abs(e.amount);
-            });
-            const catEntries = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
-            assignCategoryColors(catEntries.map(([c]) => c));
-
-            if (yearCatChart) { yearCatChart.destroy(); yearCatChart = null; }
-            yearCatChart = buildDoughnut('yearCatChart',
-                catEntries.map(([c]) => c),
-                catEntries.map(([, v]) => v),
-                catEntries.map(([c]) => categoryColors[c])
-            );
-            buildLegend(
-                document.getElementById('yearCatLegend'),
-                catEntries.map(([label, value]) => ({ label, value })),
-                categoryColors,
-                (cat) => {
-                    if (openDrilldownCategory === cat) { closeCategoryDrillDown(); }
-                    else { openCategoryDrillDown(cat, yearExp); }
-                }
-            );
-
-            // Tag doughnut
-            const tagTotals = {};
-            yearExp.filter(e => e.amount < 0).forEach(e => {
-                (e.tags || []).forEach(t => { tagTotals[t] = (tagTotals[t] || 0) + Math.abs(e.amount); });
-            });
-            const tagEntries = Object.entries(tagTotals).sort((a, b) => b[1] - a[1]);
-
-            if (yearTagChart) { yearTagChart.destroy(); yearTagChart = null; }
-            if (tagEntries.length > 0) {
-                assignTagColors(tagEntries.map(([t]) => t));
-                yearTagChart = buildDoughnut('yearTagChart',
-                    tagEntries.map(([t]) => t),
-                    tagEntries.map(([, v]) => v),
-                    tagEntries.map(([t]) => tagColors[t])
-                );
-                buildLegend(
-                    document.getElementById('yearTagLegend'),
-                    tagEntries.map(([label, value]) => ({ label, value })),
-                    tagColors,
-                    null
-                );
-                createTopTagsChart(tagEntries);
-                document.getElementById('top-tags-section').style.display = 'block';
-            } else {
-                document.getElementById('yearTagChart').getContext('2d').clearRect(0, 0, 1, 1);
-                document.getElementById('yearTagLegend').innerHTML = '<div class="no-data">No tagged expenses this year.</div>';
-                document.getElementById('top-tags-section').style.display = 'none';
-            }
         }
 
         async function initialize() {
@@ -574,12 +283,6 @@
                 if (!expRes.ok) throw new Error('Failed to fetch expenses');
                 const data = await expRes.json();
                 allExpenses = Array.isArray(data) ? data : (data && Array.isArray(data.expenses) ? data.expenses : []);
-
-                // Pre-assign colors for all categories + tags seen across history
-                const allCats = [...new Set(allExpenses.map(e => e.category))];
-                const allTagsArr = [...new Set(allExpenses.flatMap(e => e.tags || []))];
-                assignCategoryColors(allCats);
-                assignTagColors(allTagsArr);
 
                 // Sync year from URL on initial load if present
                 currentYear = getCurrentYearFromURL();
