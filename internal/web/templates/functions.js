@@ -152,3 +152,33 @@ function escapeHTML(str) {
         }[tag] || tag)
     );
 }
+
+function getURLParams() {
+    const params = new URLSearchParams(window.location.search);
+    const obj = {};
+    for (const [key, value] of params.entries()) {
+        obj[key] = value;
+    }
+    return obj;
+}
+
+function updateURLParams(newParams, replace = false) {
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.search);
+    for (const [key, value] of Object.entries(newParams)) {
+        if (value === null || value === undefined || value === '') {
+            params.delete(key);
+        } else {
+            params.set(key, value);
+        }
+    }
+    const oldSearch = url.search;
+    url.search = params.toString();
+    if (oldSearch === url.search) return; // avoid duplicates
+    if (replace) {
+        window.history.replaceState(null, '', url.toString());
+    } else {
+        window.history.pushState(null, '', url.toString());
+    }
+}
+

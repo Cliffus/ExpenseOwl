@@ -948,6 +948,9 @@
                     }
                 });
 
+                // Sync month/year from URL on initial load if present
+                currentDate = getCurrentDateFromURL();
+
                 const uniqueCategories = [...new Set(allExpenses.map(exp => exp.category))];
                 assignCategoryColors(uniqueCategories);
 
@@ -1060,6 +1063,10 @@
         document.getElementById('prevMonth').addEventListener('click', () => {
             const { start } = getMonthBounds(currentDate);
             currentDate = new Date(start.getTime() - 1);
+            updateURLParams({ 
+                year: currentDate.getFullYear(), 
+                month: String(currentDate.getMonth() + 1).padStart(2, '0') 
+            });
             updateMonthDisplay();
             updateChartAndLegend();
         });
@@ -1067,6 +1074,26 @@
         document.getElementById('nextMonth').addEventListener('click', () => {
             const { end } = getMonthBounds(currentDate);
             currentDate = new Date(end.getTime() + 1);
+            updateURLParams({ 
+                year: currentDate.getFullYear(), 
+                month: String(currentDate.getMonth() + 1).padStart(2, '0') 
+            });
+            updateMonthDisplay();
+            updateChartAndLegend();
+        });
+
+        function getCurrentDateFromURL() {
+            const params = getURLParams();
+            if (params.year && params.month && /^\d{4}$/.test(params.year) && /^\d{1,2}$/.test(params.month)) {
+                const y = parseInt(params.year);
+                const m = parseInt(params.month);
+                return new Date(y, m - 1, 15);
+            }
+            return new Date();
+        }
+
+        window.addEventListener('popstate', () => {
+            currentDate = getCurrentDateFromURL();
             updateMonthDisplay();
             updateChartAndLegend();
         });

@@ -581,6 +581,9 @@
                 assignCategoryColors(allCats);
                 assignTagColors(allTagsArr);
 
+                // Sync year from URL on initial load if present
+                currentYear = getCurrentYearFromURL();
+
                 updateYear();
                 setupCategoryDrillDownOverlay();
             } catch (err) {
@@ -588,12 +591,27 @@
             }
         }
 
+        function getCurrentYearFromURL() {
+            const params = getURLParams();
+            if (params.year && /^\d{4}$/.test(params.year)) {
+                return parseInt(params.year);
+            }
+            return new Date().getFullYear();
+        }
+
+        window.addEventListener('popstate', () => {
+            currentYear = getCurrentYearFromURL();
+            updateYear();
+        });
+
         document.getElementById('prevYear').addEventListener('click', () => {
             currentYear--;
+            updateURLParams({ year: currentYear });
             updateYear();
         });
         document.getElementById('nextYear').addEventListener('click', () => {
             currentYear++;
+            updateURLParams({ year: currentYear });
             updateYear();
         });
 
