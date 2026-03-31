@@ -82,6 +82,28 @@
             </div>
         </div>
 
+        <!-- Category Spend Leaderboard Section -->
+        <div id="category-leaderboard-section" class="chart-section-card" style="display:none;">
+            <div class="leaderboard-header">
+                <p class="section-title" style="margin-bottom: 0;">Category Spend Leaderboard</p>
+                <select id="categoryLeaderboardLimit" class="nav-button"
+                    style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                    <option value="10">Top 10</option>
+                    <option value="15">Top 15</option>
+                    <option value="20">Top 20</option>
+                    <option value="all">All Categories</option>
+                </select>
+            </div>
+            <div id="categoryLeaderboardNoData" class="no-data"
+                style="display:none; padding: 2rem; text-align: center;">
+                No spending data found for this year.
+            </div>
+            <div id="categoryLeaderboardChartWrap" class="tag-leaderboard-chart-box">
+                <canvas id="categoryLeaderboardChart"></canvas>
+            </div>
+            <div id="categoryLeaderboardList" class="tag-leaderboard-list"></div>
+        </div>
+
     </div><!-- end .container -->
 
     <script src="/functions.js"></script>
@@ -91,6 +113,10 @@
         let currentYear = new Date().getFullYear();
         let allExpenses = [];
         let monthlyBarChart = null;
+        let categoryLeaderboardChart = null;
+        let categoryDetailCharts = new Map();
+        let categoryColors = {};
+        let tagColors = {};
 
 
         Chart.defaults.color = '#b3b3b3';
@@ -102,6 +128,156 @@
                 const d = new Date(e.date);
                 return d.getFullYear() === year;
             });
+        }
+
+        function assignCategoryColors(categories) {
+            categories.forEach((category, index) => {
+                if (!categoryColors[category]) {
+                    categoryColors[category] = colorPalette[index % colorPalette.length];
+                }
+            });
+        }
+
+        function assignTagColors(tags) {
+            tags.forEach((tag, index) => {
+                if (!tagColors[tag]) {
+                    tagColors[tag] = colorPalette[(index + 5) % colorPalette.length];
+                }
+            });
+        }
+
+        function updateCategoryLeaderboard() {
+            const yearExp = getYearExpenses(currentYear).filter(e => e.amount < 0);
+            const prevYearExp = getYearExpenses(currentYear - 1).filter(e => e.amount < 0);
+
+            const getCategoryTotals = (expenses) => {
+                const totals = {};
+                expenses.forEach(e => {
+                    totals[e.category] = (totals[e.category] || 0) + Math.abs(e.amount);
+                });
+                return totals;
+            };
+
+            const currCatTotals = getCategoryTotals(yearExp);
+            const prevCatTotals = getCategoryTotals(prevYearExp);
+
+            let sortedCats = Object.entries(currCatTotals).sort((a, b) => b[1] - a[1]);
+            const limitVal = document.getElementById('categoryLeaderboardLimit').value;
+            const limit = limitVal === 'all' ? sortedCats.length : parseInt(limitVal, 10);
+            const topCats = sortedCats.slice(0, limit);
+
+            const noDataMsg = document.getElementById('categoryLeaderboardNoData');
+            const chartWrap = document.getElementById('categoryLeaderboardChartWrap');
+            const listEl = document.getElementById('categoryLeaderboardList');
+            const sectionEl = document.getElementById('category-leaderboard-section');
+
+            if (yearExp.length === 0) {
+                sectionEl.style.display = 'none';
+                return;
+            }
+
+            sectionEl.style.display = 'block';
+
+            if (topCats.length === 0) {
+                chartWrap.style.display = 'none';
+                listEl.style.display = 'none';
+                noDataMsg.style.display = 'block';
+                if (categoryLeaderboardChart) { categoryLeaderboardChart.destroy(); categoryLeaderboardChart = null; }
+                return;
+            }
+
+            noDataMsg.style.display = 'none';
+            chartWrap.style.display = 'block';
+            listEl.style.display = 'flex';
+
+            const hasPrevYearData = prevYearExp.length > 0;
+
+            const leaderboardData = topCats.map(([category, amount], index) => {
+                const prevAmount = prevCatTotals[category] || 0;
+                let delta = 0;
+                let deltaColorClass = 'neutral';
+                let deltaArrow = '';
+                let isNew = false;
+                let showDelta = hasPrevYearData;
+
+                if (hasPrevYearData) {
+                    if (prevAmount > 0) {
+                        delta = ((amount - prevAmount) / prevAmount) * 100;
+                    } else if (amount > 0) {
+                        isNew = true;
+                    }
+                }
+
+                if (isNew) {
+                    deltaColorClass = 'new';
+                } else if (delta > 0.1) {
+                    deltaColorClass = 'increase';
+                    deltaArrow = '↑';
+                } else if (delta < -0.1) {
+                    deltaColorClass = 'decrease';
+                    deltaArrow = '↓';
+                }
+
+                return { category, amount, delta, deltaColorClass, deltaArrow, isNew, showDelta, rank: index + 1 };
+            });
+
+            if (categoryLeaderboardChart) categoryLeaderboardChart.destroy();
+            assignCategoryColors(leaderboardData.map(d => d.category));
+
+            categoryLeaderboardChart = new Chart('categoryLeaderboardChart', {
+                type: 'bar',
+                data: {
+                    labels: leaderboardData.map(d => d.category),
+                    datasets: [{
+                        data: leaderboardData.map(d => d.amount),
+                        backgroundColor: leaderboardData.map(d => categoryColors[d.category] || '#ccc'),
+                        borderColor: '#1a1a1a',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        barThickness: 20,
+                        maxBarThickness: 25
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.label}: ${formatCurrency(ctx.raw)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { callback: v => formatCurrency(v) } },
+                        y: { ticks: { color: '#b3b3b3' } }
+                    }
+                }
+            });
+
+            // Clear detail charts
+            categoryDetailCharts.forEach(chart => chart.destroy());
+            categoryDetailCharts.clear();
+
+            listEl.innerHTML = leaderboardData.map(d => `
+                <div class="tag-leaderboard-item" data-category="${escapeHTML(d.category)}">
+                    <div class="tag-leaderboard-row" onclick="toggleCategoryDetail(this)">
+                        <div class="tag-info">
+                            <span class="tag-rank">#${d.rank}</span>
+                            <span class="tag-name">${escapeHTML(d.category)}</span>
+                        </div>
+                        <div class="tag-values">
+                            <span class="tag-delta ${d.deltaColorClass}">
+                                ${d.showDelta ? (d.isNew ? 'New' : `${d.deltaArrow} ${Math.abs(d.delta).toFixed(1)}%`) : ''}
+                            </span>
+                            <span class="tag-amount">${formatCurrency(d.amount)}</span>
+                        </div>
+                    </div>
+                    <div class="tag-leaderboard-detail" style="display:none;"></div>
+                </div>
+            `).join('');
         }
 
 
@@ -251,7 +427,100 @@
 
         // ── Generic doughnut builder ───────────────────────────────
 
-        // ── Master yearly update ───────────────────────────────────
+        function toggleCategoryDetail(rowElement) {
+            const itemElement = rowElement.closest('.tag-leaderboard-item');
+            const category = itemElement.dataset.category;
+            const detailElement = itemElement.querySelector('.tag-leaderboard-detail');
+            const isExpanded = itemElement.classList.contains('expanded');
+
+            if (isExpanded) {
+                itemElement.classList.remove('expanded');
+                detailElement.style.display = 'none';
+                if (categoryDetailCharts.has(category)) {
+                    categoryDetailCharts.get(category).destroy();
+                    categoryDetailCharts.delete(category);
+                }
+                detailElement.innerHTML = '';
+            } else {
+                itemElement.classList.add('expanded');
+                detailElement.style.display = 'block';
+                renderCategoryDetail(category, detailElement);
+            }
+        }
+
+        function renderCategoryDetail(category, container) {
+            const yearExpenses = getYearExpenses(currentYear).filter(e => e.amount < 0 && e.category === category);
+            const tagTotals = { 'Untagged': 0 };
+
+            yearExpenses.forEach(e => {
+                const amount = Math.abs(e.amount);
+                if (e.tags && e.tags.length > 0) {
+                    e.tags.forEach(t => {
+                        tagTotals[t] = (tagTotals[t] || 0) + amount;
+                    });
+                } else {
+                    tagTotals['Untagged'] += amount;
+                }
+            });
+
+            // Remove Untagged if 0
+            if (tagTotals['Untagged'] === 0) delete tagTotals['Untagged'];
+
+            const sortedEntries = Object.entries(tagTotals).sort((a, b) => b[1] - a[1]);
+            const tags = sortedEntries.map(e => e[0]);
+            assignTagColors(tags);
+
+            const canvasId = `cat-chart-${category.replace(/\s+/g, '-')}`;
+            const chartHeight = Math.max(60, sortedEntries.length * 45);
+
+            container.innerHTML = `
+                <div class="tag-detail-layout">
+                    <div class="tag-detail-chart-container year-dynamic" style="height: ${chartHeight}px;">
+                        <canvas id="${canvasId}"></canvas>
+                    </div>
+                    <div class="tag-detail-list-container">
+                        ${sortedEntries.map(([targetTag, amount]) => `
+                            <div class="tag-detail-cat-row">
+                                <div class="tag-detail-cat-label">
+                                    <div class="color-box" style="background-color: ${targetTag === 'Untagged' ? '#606060' : (tagColors[targetTag] || '#ccc')}"></div>
+                                    <span>${escapeHTML(targetTag)}</span>
+                                </div>
+                                <span class="tag-amount">${formatCurrency(amount)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            const ctx = document.getElementById(canvasId);
+            const detailChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedEntries.map(e => e[0]),
+                    datasets: [{
+                        data: sortedEntries.map(e => e[1]),
+                        backgroundColor: sortedEntries.map(e => e[0] === 'Untagged' ? '#606060' : (tagColors[e[0]] || '#ccc')),
+                        borderRadius: 4,
+                        barThickness: 20,
+                        maxBarThickness: 25
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => formatCurrency(ctx.raw) } }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { display: false }, grid: { display: false } },
+                        y: { ticks: { color: '#b3b3b3', font: { size: 10 } } }
+                    }
+                }
+            });
+            categoryDetailCharts.set(category, detailChart);
+        }
         function updateYear() {
             const yearExp = getYearExpenses(currentYear);
             const hasData = yearExp.length > 0;
@@ -263,6 +532,7 @@
             document.getElementById('monthly-bar-section').style.display = hasData ? 'block' : 'none';
 
             updateYearlyCashflow(yearExp);
+            updateCategoryLeaderboard();
 
             if (!hasData) return;
 
@@ -286,9 +556,7 @@
 
                 // Sync year from URL on initial load if present
                 currentYear = getCurrentYearFromURL();
-
                 updateYear();
-                setupCategoryDrillDownOverlay();
             } catch (err) {
                 console.error('Failed to initialize yearly view:', err);
             }
@@ -317,6 +585,7 @@
             updateURLParams({ year: currentYear });
             updateYear();
         });
+        document.getElementById('categoryLeaderboardLimit').addEventListener('change', updateCategoryLeaderboard);
 
         document.addEventListener('DOMContentLoaded', initialize);
     </script>

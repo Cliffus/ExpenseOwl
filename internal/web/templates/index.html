@@ -287,7 +287,7 @@
                 cashflowSection.style.display = 'flex';
                 noDataMessage.style.display = 'none';
                 const categoryData = calculateCategoryBreakdown(monthExpenses);
-                
+
                 // Calculate previous month's category breakdown
                 const { start: currentStart } = getMonthBounds(currentDate);
                 const prevMonthDate = new Date(currentStart.getTime() - 1);
@@ -392,7 +392,7 @@
 
                 const color = categoryColors[category] || '#ccc';
                 const categoryDataItem = categoryMap.get(category);
-                
+
                 let percentage = '';
                 let amount = '';
                 let deltaHtml = '';
@@ -414,7 +414,7 @@
                             deltaHtml = `<span class="category-mom-delta ${deltaClass}">${icon}${Math.abs(delta).toFixed(0)}%</span>`;
                         }
                     } else if (categoryDataItem.total > 0) {
-                         deltaHtml = `<span class="category-mom-delta new">New</span>`;
+                        deltaHtml = `<span class="category-mom-delta new">New</span>`;
                     }
                 }
 
@@ -823,16 +823,16 @@
 
             listEl.innerHTML = leaderboardData.map(d => `
                 <div class="tag-leaderboard-item" data-tag="${escapeHTML(d.tag)}">
-                    <div class="tag-leaderboard-row" onclick="toggleTagDetail('${escapeHTML(d.tag)}', this)">
+                    <div class="tag-leaderboard-row" onclick="toggleTagDetail(this)">
                         <div class="tag-info">
                             <span class="tag-rank">#${d.rank}</span>
                             <span class="tag-name">${escapeHTML(d.tag)}</span>
                         </div>
                         <div class="tag-values">
-                            <span class="tag-amount">${formatCurrency(d.amount)}</span>
                             <span class="tag-delta ${d.deltaColorClass}">
                                 ${d.deltaArrow} ${Math.abs(d.delta).toFixed(1)}%
                             </span>
+                            <span class="tag-amount">${formatCurrency(d.amount)}</span>
                         </div>
                     </div>
                     <div class="tag-leaderboard-detail"></div>
@@ -840,8 +840,9 @@
             `).join('');
         }
 
-        function toggleTagDetail(tag, rowElement) {
+        function toggleTagDetail(rowElement) {
             const itemElement = rowElement.closest('.tag-leaderboard-item');
+            const tag = itemElement.dataset.tag;
             const detailElement = itemElement.querySelector('.tag-leaderboard-detail');
             const isExpanded = itemElement.classList.contains('expanded');
 
@@ -889,7 +890,7 @@
                         ${sortedEntries.map(([cat, amount]) => `
                             <div class="tag-detail-cat-row">
                                 <div class="tag-detail-cat-label">
-                                    <div class="tag-detail-dot" style="background-color: ${categoryColors[cat] || '#ccc'}"></div>
+                                    <div class="color-box" style="background-color: ${categoryColors[cat] || '#ccc'}"></div>
                                     <span>${escapeHTML(cat)}</span>
                                 </div>
                                 <span class="tag-amount">${formatCurrency(amount)}</span>
@@ -1063,9 +1064,9 @@
         document.getElementById('prevMonth').addEventListener('click', () => {
             const { start } = getMonthBounds(currentDate);
             currentDate = new Date(start.getTime() - 1);
-            updateURLParams({ 
-                year: currentDate.getFullYear(), 
-                month: String(currentDate.getMonth() + 1).padStart(2, '0') 
+            updateURLParams({
+                year: currentDate.getFullYear(),
+                month: String(currentDate.getMonth() + 1).padStart(2, '0')
             });
             updateMonthDisplay();
             updateChartAndLegend();
@@ -1074,9 +1075,9 @@
         document.getElementById('nextMonth').addEventListener('click', () => {
             const { end } = getMonthBounds(currentDate);
             currentDate = new Date(end.getTime() + 1);
-            updateURLParams({ 
-                year: currentDate.getFullYear(), 
-                month: String(currentDate.getMonth() + 1).padStart(2, '0') 
+            updateURLParams({
+                year: currentDate.getFullYear(),
+                month: String(currentDate.getMonth() + 1).padStart(2, '0')
             });
             updateMonthDisplay();
             updateChartAndLegend();
