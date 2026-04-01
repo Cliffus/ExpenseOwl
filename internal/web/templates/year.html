@@ -104,6 +104,28 @@
             <div id="categoryLeaderboardList" class="tag-leaderboard-list"></div>
         </div>
 
+        <!-- Tag Spend Leaderboard Section -->
+        <div id="tag-leaderboard-section" class="chart-section-card" style="display:none; margin-top: 2rem;">
+            <div class="leaderboard-header">
+                <p class="section-title" style="margin-bottom: 0;">Tag Spend Leaderboard</p>
+                <select id="tagLeaderboardLimit" class="nav-button"
+                    style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                    <option value="10">Top 10</option>
+                    <option value="15">Top 15</option>
+                    <option value="20">Top 20</option>
+                    <option value="all">All Tags</option>
+                </select>
+            </div>
+            <div id="tagLeaderboardNoData" class="no-data"
+                style="display:none; padding: 2rem; text-align: center;">
+                No tagged spending data found for this year.
+            </div>
+            <div id="tagLeaderboardChartWrap" class="tag-leaderboard-chart-box">
+                <canvas id="tagLeaderboardChart"></canvas>
+            </div>
+            <div id="tagLeaderboardList" class="tag-leaderboard-list"></div>
+        </div>
+
     </div><!-- end .container -->
 
     <script src="/functions.js"></script>
@@ -114,7 +136,9 @@
         let allExpenses = [];
         let monthlyBarChart = null;
         let categoryLeaderboardChart = null;
-        let categoryDetailCharts = new Map();
+        const categoryDetailCharts = new Map();
+        let tagLeaderboardChart = null;
+        const tagDetailCharts = new Map();
         let categoryColors = {};
         let tagColors = {};
 
@@ -521,6 +545,199 @@
             });
             categoryDetailCharts.set(category, detailChart);
         }
+
+        function updateTagLeaderboard() {
+            const yearExp = getYearExpenses(currentYear).filter(e => e.amount < 0 && e.tags && e.tags.length > 0);
+            const prevYearExp = getYearExpenses(currentYear - 1).filter(e => e.amount < 0 && e.tags && e.tags.length > 0);
+
+            const getTagTotals = (expenses) => {
+                const totals = {};
+                expenses.forEach(e => {
+                    e.tags.forEach(tag => {
+                        totals[tag] = (totals[tag] || 0) + Math.abs(e.amount);
+                    });
+                });
+                return totals;
+            };
+
+            const currentTotals = getTagTotals(yearExp);
+            const prevTotals = getTagTotals(prevYearExp);
+
+            const sectionEl = document.getElementById('tag-leaderboard-section');
+            const noDataEl = document.getElementById('tag-leaderboard-noData'); // wait, the ID below is tagLeaderboardNoData
+            const chartWrapEl = document.getElementById('tag-leaderboard-chartWrap');
+            const listEl = document.getElementById('tagLeaderboardList');
+
+            if (Object.keys(currentTotals).length === 0) {
+                document.getElementById('tagLeaderboardNoData').style.display = 'block';
+                document.getElementById('tag-leaderboard-section').style.display = 'block';
+                document.getElementById('tagLeaderboardChartWrap').style.display = 'none';
+                listEl.innerHTML = '';
+                return;
+            }
+
+            document.getElementById('tag-leaderboard-section').style.display = 'block';
+            document.getElementById('tagLeaderboardNoData').style.display = 'none';
+            document.getElementById('tagLeaderboardChartWrap').style.display = 'block';
+
+            let leaderboardData = Object.entries(currentTotals).map(([tag, amount]) => {
+                const prevAmount = prevTotals[tag] || 0;
+                const isNew = prevAmount === 0;
+                const showDelta = prevYearExp.length > 0;
+                let delta = 0;
+                let deltaColorClass = 'stable';
+                let deltaArrow = '→';
+
+                if (prevAmount > 0) {
+                    delta = ((amount - prevAmount) / prevAmount) * 100;
+                }
+
+                if (delta > 0.1) {
+                    deltaColorClass = 'increase';
+                    deltaArrow = '↑';
+                } else if (delta < -0.1) {
+                    deltaColorClass = 'decrease';
+                    deltaArrow = '↓';
+                }
+
+                return { tag, amount, delta, deltaColorClass, deltaArrow, isNew, showDelta };
+            });
+
+            leaderboardData.sort((a, b) => b.amount - a.amount);
+            const limit = document.getElementById('tagLeaderboardLimit').value;
+            if (limit !== 'all') {
+                leaderboardData = leaderboardData.slice(0, parseInt(limit));
+            }
+
+            leaderboardData = leaderboardData.map((d, index) => ({ ...d, rank: index + 1 }));
+
+            if (tagLeaderboardChart) tagLeaderboardChart.destroy();
+            assignTagColors(leaderboardData.map(d => d.tag));
+
+            tagLeaderboardChart = new Chart('tagLeaderboardChart', {
+                type: 'bar',
+                data: {
+                    labels: leaderboardData.map(d => d.tag),
+                    datasets: [{
+                        data: leaderboardData.map(d => d.amount),
+                        backgroundColor: leaderboardData.map(d => tagColors[d.tag] || '#ccc'),
+                        borderColor: '#1a1a1a',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        barThickness: 20,
+                        maxBarThickness: 25
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => formatCurrency(ctx.raw) } }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { display: false }, grid: { display: false } },
+                        y: { ticks: { color: '#b3b3b3', font: { size: 10 } } }
+                    }
+                }
+            });
+
+            tagDetailCharts.forEach(chart => chart.destroy());
+            tagDetailCharts.clear();
+
+            listEl.innerHTML = leaderboardData.map(d => `
+                <div class="tag-leaderboard-item" data-tag="${escapeHTML(d.tag)}">
+                    <div class="tag-leaderboard-row" onclick="toggleTagDetail(this)">
+                        <div class="tag-info">
+                            <span class="tag-rank">#${d.rank}</span>
+                            <span class="tag-name">${escapeHTML(d.tag)}</span>
+                        </div>
+                        <div class="tag-values">
+                            <span class="tag-delta ${d.deltaColorClass}">
+                                ${d.showDelta ? (d.isNew ? 'New' : `${d.deltaArrow} ${Math.abs(d.delta).toFixed(1)}%`) : ''}
+                            </span>
+                            <span class="tag-amount">${formatCurrency(d.amount)}</span>
+                        </div>
+                    </div>
+                    <div class="tag-leaderboard-detail" style="display:none;"></div>
+                </div>
+            `).join('');
+        }
+
+        function toggleTagDetail(rowElement) {
+            const itemElement = rowElement.closest('.tag-leaderboard-item');
+            const tag = itemElement.dataset.tag;
+            const detailElement = itemElement.querySelector('.tag-leaderboard-detail');
+            const isExpanded = itemElement.classList.contains('expanded');
+
+            if (isExpanded) {
+                itemElement.classList.remove('expanded');
+                detailElement.style.display = 'none';
+                if (tagDetailCharts.has(tag)) {
+                    tagDetailCharts.get(tag).destroy();
+                    tagDetailCharts.delete(tag);
+                }
+                return;
+            }
+
+            itemElement.classList.add('expanded');
+            detailElement.style.display = 'block';
+
+            const tagExp = getYearExpenses(currentYear).filter(e => e.amount < 0 && e.tags && e.tags.includes(tag));
+            const categoryTotals = {};
+            tagExp.forEach(e => {
+                categoryTotals[e.category] = (categoryTotals[e.category] || 0) + Math.abs(e.amount);
+            });
+
+            const sortedEntries = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+            const categories = sortedEntries.map(e => e[0]);
+            assignCategoryColors(categories);
+
+            const canvasId = `tag-detail-chart-${tag.replace(/\s+/g, '-')}`;
+
+            detailElement.innerHTML = `
+                <div class="tag-detail-layout">
+                    <div class="tag-detail-chart-container">
+                        <canvas id="${canvasId}"></canvas>
+                    </div>
+                    <div class="tag-detail-list-container">
+                        ${sortedEntries.map(([cat, amount]) => `
+                            <div class="tag-detail-cat-row">
+                                <div class="tag-detail-cat-label">
+                                    <div class="tag-detail-dot" style="background-color: ${categoryColors[cat] || '#ccc'}"></div>
+                                    <span>${escapeHTML(cat)}</span>
+                                </div>
+                                <span class="tag-amount">${formatCurrency(amount)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            const ctx = document.getElementById(canvasId);
+            const detailChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: sortedEntries.map(e => e[0]),
+                    datasets: [{
+                        data: sortedEntries.map(e => e[1]),
+                        backgroundColor: sortedEntries.map(e => categoryColors[e[0]] || '#ccc'),
+                        borderWidth: 1,
+                        borderColor: '#1a1a1a'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => `${ctx.label}: ${formatCurrency(ctx.raw)}` } }
+                    }
+                }
+            });
+            tagDetailCharts.set(tag, detailChart);
+        }
         function updateYear() {
             const yearExp = getYearExpenses(currentYear);
             const hasData = yearExp.length > 0;
@@ -533,6 +750,7 @@
 
             updateYearlyCashflow(yearExp);
             updateCategoryLeaderboard();
+            updateTagLeaderboard();
 
             if (!hasData) return;
 
@@ -556,6 +774,9 @@
 
                 // Sync year from URL on initial load if present
                 currentYear = getCurrentYearFromURL();
+                document.getElementById('categoryLeaderboardLimit').addEventListener('change', updateCategoryLeaderboard);
+                document.getElementById('tagLeaderboardLimit').addEventListener('change', updateTagLeaderboard);
+
                 updateYear();
             } catch (err) {
                 console.error('Failed to initialize yearly view:', err);
