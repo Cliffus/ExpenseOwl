@@ -116,8 +116,7 @@
                     <option value="all">All Tags</option>
                 </select>
             </div>
-            <div id="tagLeaderboardNoData" class="no-data"
-                style="display:none; padding: 2rem; text-align: center;">
+            <div id="tagLeaderboardNoData" class="no-data" style="display:none; padding: 2rem; text-align: center;">
                 No tagged spending data found for this year.
             </div>
             <div id="tagLeaderboardChartWrap" class="tag-leaderboard-chart-box">
@@ -154,6 +153,17 @@
             });
         }
 
+        function filterExpensesByYTD(expenses, year, monthLimit) {
+            const now = new Date();
+            const realWorldYear = now.getFullYear();
+            if (year !== realWorldYear) return expenses;
+
+            return expenses.filter(e => {
+                const d = new Date(e.date);
+                return d.getMonth() <= monthLimit;
+            });
+        }
+
         function assignCategoryColors(categories) {
             categories.forEach((category, index) => {
                 if (!categoryColors[category]) {
@@ -170,9 +180,17 @@
             });
         }
 
-        function updateCategoryLeaderboard() {
-            const yearExp = getYearExpenses(currentYear).filter(e => e.amount < 0);
-            const prevYearExp = getYearExpenses(currentYear - 1).filter(e => e.amount < 0);
+        function updateCategoryLeaderboard(yearExp, prevYearExp, isYTD, monthLimit) {
+            const currentYearExpenses = yearExp.filter(e => e.amount < 0);
+            let previousYearExpenses = prevYearExp.filter(e => e.amount < 0);
+
+            // 'Apples-to-apples' YTD comparison
+            if (isYTD) {
+                previousYearExpenses = previousYearExpenses.filter(e => {
+                    const d = new Date(e.date);
+                    return d.getMonth() <= monthLimit;
+                });
+            }
 
             const getCategoryTotals = (expenses) => {
                 const totals = {};
@@ -182,8 +200,8 @@
                 return totals;
             };
 
-            const currCatTotals = getCategoryTotals(yearExp);
-            const prevCatTotals = getCategoryTotals(prevYearExp);
+            const currCatTotals = getCategoryTotals(currentYearExpenses);
+            const prevCatTotals = getCategoryTotals(previousYearExpenses);
 
             let sortedCats = Object.entries(currCatTotals).sort((a, b) => b[1] - a[1]);
             const limitVal = document.getElementById('categoryLeaderboardLimit').value;
@@ -195,7 +213,7 @@
             const listEl = document.getElementById('categoryLeaderboardList');
             const sectionEl = document.getElementById('category-leaderboard-section');
 
-            if (yearExp.length === 0) {
+            if (currentYearExpenses.length === 0) {
                 sectionEl.style.display = 'none';
                 return;
             }
@@ -214,7 +232,7 @@
             chartWrap.style.display = 'block';
             listEl.style.display = 'flex';
 
-            const hasPrevYearData = prevYearExp.length > 0;
+            const hasPrevYearData = previousYearExpenses.length > 0;
 
             const leaderboardData = topCats.map(([category, amount], index) => {
                 const prevAmount = prevCatTotals[category] || 0;
@@ -258,7 +276,6 @@
                         borderColor: '#1a1a1a',
                         borderWidth: 1,
                         borderRadius: 4,
-                        barThickness: 20,
                         maxBarThickness: 25
                     }]
                 },
@@ -473,7 +490,13 @@
         }
 
         function renderCategoryDetail(category, container) {
-            const yearExpenses = getYearExpenses(currentYear).filter(e => e.amount < 0 && e.category === category);
+            const now = new Date();
+            const realWorldYear = now.getFullYear();
+            const monthLimit = now.getMonth();
+
+            // Apply YTD filter to drilldown if it is the current year
+            const yearExpenses = filterExpensesByYTD(getYearExpenses(currentYear).filter(e => e.amount < 0 && e.category === category), currentYear, monthLimit);
+
             const tagTotals = { 'Untagged': 0 };
 
             yearExpenses.forEach(e => {
@@ -546,9 +569,17 @@
             categoryDetailCharts.set(category, detailChart);
         }
 
-        function updateTagLeaderboard() {
-            const yearExp = getYearExpenses(currentYear).filter(e => e.amount < 0 && e.tags && e.tags.length > 0);
-            const prevYearExp = getYearExpenses(currentYear - 1).filter(e => e.amount < 0 && e.tags && e.tags.length > 0);
+        function updateTagLeaderboard(yearExp, prevYearExp, isYTD, monthLimit) {
+            const currentTagExpenses = yearExp.filter(e => e.amount < 0 && e.tags && e.tags.length > 0);
+            let previousYearExpenses = prevYearExp.filter(e => e.amount < 0 && e.tags && e.tags.length > 0);
+
+            // 'Apples-to-apples' YTD comparison
+            if (isYTD) {
+                previousYearExpenses = previousYearExpenses.filter(e => {
+                    const d = new Date(e.date);
+                    return d.getMonth() <= monthLimit;
+                });
+            }
 
             const getTagTotals = (expenses) => {
                 const totals = {};
@@ -560,11 +591,11 @@
                 return totals;
             };
 
-            const currentTotals = getTagTotals(yearExp);
-            const prevTotals = getTagTotals(prevYearExp);
+            const currentTotals = getTagTotals(currentTagExpenses);
+            const prevTotals = getTagTotals(previousYearExpenses);
 
             const sectionEl = document.getElementById('tag-leaderboard-section');
-            const noDataEl = document.getElementById('tag-leaderboard-noData'); // wait, the ID below is tagLeaderboardNoData
+            const noDataEl = document.getElementById('tag-leaderboard-noData');
             const chartWrapEl = document.getElementById('tag-leaderboard-chartWrap');
             const listEl = document.getElementById('tagLeaderboardList');
 
@@ -580,19 +611,26 @@
             document.getElementById('tagLeaderboardNoData').style.display = 'none';
             document.getElementById('tagLeaderboardChartWrap').style.display = 'block';
 
-            let leaderboardData = Object.entries(currentTotals).map(([tag, amount]) => {
+            const hasPrevYearData = prevYearExp && prevYearExp.length > 0;
+            let leaderboardData = Object.entries(currentTotals).map(([tag, amount], index) => {
                 const prevAmount = prevTotals[tag] || 0;
-                const isNew = prevAmount === 0;
-                const showDelta = prevYearExp.length > 0;
                 let delta = 0;
-                let deltaColorClass = 'stable';
-                let deltaArrow = '→';
+                let deltaColorClass = 'neutral';
+                let deltaArrow = '';
+                let isNew = false;
+                let showDelta = hasPrevYearData;
 
-                if (prevAmount > 0) {
-                    delta = ((amount - prevAmount) / prevAmount) * 100;
+                if (hasPrevYearData) {
+                    if (prevAmount > 0) {
+                        delta = ((amount - prevAmount) / prevAmount) * 100;
+                    } else if (amount > 0) {
+                        isNew = true;
+                    }
                 }
 
-                if (delta > 0.1) {
+                if (isNew) {
+                    deltaColorClass = 'new';
+                } else if (delta > 0.1) {
                     deltaColorClass = 'increase';
                     deltaArrow = '↑';
                 } else if (delta < -0.1) {
@@ -600,7 +638,7 @@
                     deltaArrow = '↓';
                 }
 
-                return { tag, amount, delta, deltaColorClass, deltaArrow, isNew, showDelta };
+                return { tag, amount, delta, deltaColorClass, deltaArrow, isNew, showDelta, rank: index + 1, isYTD };
             });
 
             leaderboardData.sort((a, b) => b.amount - a.amount);
@@ -624,7 +662,6 @@
                         borderColor: '#1a1a1a',
                         borderWidth: 1,
                         borderRadius: 4,
-                        barThickness: 20,
                         maxBarThickness: 25
                     }]
                 },
@@ -684,7 +721,13 @@
             itemElement.classList.add('expanded');
             detailElement.style.display = 'block';
 
-            const tagExp = getYearExpenses(currentYear).filter(e => e.amount < 0 && e.tags && e.tags.includes(tag));
+            const now = new Date();
+            const realWorldYear = now.getFullYear();
+            const monthLimit = now.getMonth();
+
+            // Apply YTD filter to drilldown if it is the current year
+            const tagExp = filterExpensesByYTD(getYearExpenses(currentYear).filter(e => e.amount < 0 && e.tags && e.tags.includes(tag)), currentYear, monthLimit);
+
             const categoryTotals = {};
             tagExp.forEach(e => {
                 categoryTotals[e.category] = (categoryTotals[e.category] || 0) + Math.abs(e.amount);
@@ -739,7 +782,13 @@
             tagDetailCharts.set(tag, detailChart);
         }
         function updateYear() {
-            const yearExp = getYearExpenses(currentYear);
+            const now = new Date();
+            const realWorldMonthLimit = now.getMonth();
+            const isYTD = currentYear === now.getFullYear();
+
+            const yearExp = filterExpensesByYTD(getYearExpenses(currentYear), currentYear, realWorldMonthLimit);
+            const prevYearExp = getYearExpenses(currentYear - 1);
+
             const hasData = yearExp.length > 0;
             const currentYearEl = document.getElementById('currentYear');
             currentYearEl.textContent = currentYear;
@@ -749,8 +798,8 @@
             document.getElementById('monthly-bar-section').style.display = hasData ? 'block' : 'none';
 
             updateYearlyCashflow(yearExp);
-            updateCategoryLeaderboard();
-            updateTagLeaderboard();
+            updateCategoryLeaderboard(yearExp, prevYearExp, isYTD, realWorldMonthLimit);
+            updateTagLeaderboard(yearExp, prevYearExp, isYTD, realWorldMonthLimit);
 
             if (!hasData) return;
 
@@ -806,7 +855,8 @@
             updateURLParams({ year: currentYear });
             updateYear();
         });
-        document.getElementById('categoryLeaderboardLimit').addEventListener('change', updateCategoryLeaderboard);
+        document.getElementById('categoryLeaderboardLimit').addEventListener('change', () => updateYear());
+        document.getElementById('tagLeaderboardLimit').addEventListener('change', () => updateYear());
 
         document.addEventListener('DOMContentLoaded', initialize);
     </script>
