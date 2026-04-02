@@ -792,6 +792,9 @@
             const hasData = yearExp.length > 0;
             const currentYearEl = document.getElementById('currentYear');
             currentYearEl.textContent = currentYear;
+            
+            // Disable nextYear button if we are at the current year
+            document.getElementById('nextYear').disabled = currentYear >= now.getFullYear();
 
             document.getElementById('noDataMessage').style.display = hasData ? 'none' : 'block';
             document.getElementById('cashflow-section').style.display = hasData ? 'flex' : 'none';
@@ -834,10 +837,12 @@
 
         function getCurrentYearFromURL() {
             const params = getURLParams();
+            const currentRealYear = new Date().getFullYear();
             if (params.year && /^\d{4}$/.test(params.year)) {
-                return parseInt(params.year);
+                const year = parseInt(params.year);
+                return year > currentRealYear ? currentRealYear : year;
             }
-            return new Date().getFullYear();
+            return currentRealYear;
         }
 
         window.addEventListener('popstate', () => {
