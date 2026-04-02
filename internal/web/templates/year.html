@@ -175,7 +175,7 @@
         function assignTagColors(tags) {
             tags.forEach((tag, index) => {
                 if (!tagColors[tag]) {
-                    tagColors[tag] = colorPalette[(index + 5) % colorPalette.length];
+                    tagColors[tag] = colorPalette[(index) % colorPalette.length];
                 }
             });
         }
@@ -781,6 +781,7 @@
             });
             tagDetailCharts.set(tag, detailChart);
         }
+
         function updateYear() {
             const now = new Date();
             const realWorldMonthLimit = now.getMonth();
@@ -792,7 +793,7 @@
             const hasData = yearExp.length > 0;
             const currentYearEl = document.getElementById('currentYear');
             currentYearEl.textContent = currentYear;
-            
+
             // Disable nextYear button if we are at the current year
             document.getElementById('nextYear').disabled = currentYear >= now.getFullYear();
 
