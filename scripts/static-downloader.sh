@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "downloading chart.js minified script"
-curl -sL https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js -o internal/web/templates/chart.min.js
+curl -sL https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js -o internal/web/templates/chart.min.js
 echo "downloading font awesome minified CSS"
 curl -sL https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css -o internal/web/templates/fa.min.css
 
