@@ -827,8 +827,6 @@
 
                 // Sync year from URL on initial load if present
                 currentYear = getCurrentYearFromURL();
-                document.getElementById('categoryLeaderboardLimit').addEventListener('change', updateCategoryLeaderboard);
-                document.getElementById('tagLeaderboardLimit').addEventListener('change', updateTagLeaderboard);
 
                 updateYear();
             } catch (err) {
